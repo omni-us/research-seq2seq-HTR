@@ -1,8 +1,9 @@
 import torch.utils.data as D
 import cv2
 import numpy as np
-from torchvision import transforms
-import Augmentor
+#from torchvision import transforms
+import marcalAugmentor
+#import Augmentor
 #from torchsample.transforms import RangeNormalize
 #import torch
 
@@ -41,20 +42,21 @@ class IAM_words(D.Dataset):
         self.output_max_len = OUTPUT_MAX_LEN
         self.augmentation = augmentation
 
-        # image augmentation for training
-        pipeline = Augmentor.Pipeline()
-        pipeline.zoom(1.0, 0.75, 1.0)
-        pipeline.rotate(1.0, 0.2, 0.2)
-        pipeline.shear(1.0, 2, 2)
-        pipeline.skew(1.0, 0.1)
-        #pipeline.random_distortion(1.0, 3, 3, 3) #b04-081-02-12 64*4
-        # if grid_width > 4, then it will occur ZeroDivisionError: float division by zero
-        self.transform = transforms.Compose([
-                            transforms.ToPILImage(),
-                            pipeline.torch_transform(),
-                            #transforms.ToTensor(),
-                            ])
-        #self.norm = RangeNormalize(0, 1)
+        self.transformer = marcalAugmentor.augmentor
+        ## image augmentation for training
+        #pipeline = Augmentor.Pipeline()
+        #pipeline.zoom(1.0, 0.75, 1.0)
+        #pipeline.rotate(1.0, 0.2, 0.2)
+        #pipeline.shear(1.0, 2, 2)
+        #pipeline.skew(1.0, 0.1)
+        ##pipeline.random_distortion(1.0, 3, 3, 3) #b04-081-02-12 64*4
+        ## if grid_width > 4, then it will occur ZeroDivisionError: float division by zero
+        #self.transform = transforms.Compose([
+        #                    transforms.ToPILImage(),
+        #                    pipeline.torch_transform(),
+        #                    #transforms.ToTensor(),
+        #                    ])
+        ##self.norm = RangeNormalize(0, 1)
 
     def __getitem__(self, index):
         file_name = [] # as index
@@ -85,24 +87,27 @@ class IAM_words(D.Dataset):
             thresh = int(thresh)
         url = baseDir + 'words/' + file_name + '.png'
         img = cv2.imread(url, 0)
-        if RM_BACKGROUND:
-            img[img>thresh] = 255
-        img = 255 - img
+        size = img.shape[0] * img.shape[1]
+        # c04-066-01-08.png 4*3, for too small images do not augment
+        if self.augmentation and size > 100: # augmentation for training data
+            img_new = self.transformer(img)
+            if img_new.shape[0] ==0 or img_new.shape[1] == 0:
+                print(file_name, img_new.shape)
+                if RM_BACKGROUND:
+                    img[img>thresh] = 255
+                img = 255 - img
+            else:
+                img = img_new
+        else: # evaluation
+            if RM_BACKGROUND:
+                img[img>thresh] = 255
+            img = 255 - img
         img = img/255. #float64
         img = img.astype('float32')
         rate = float(IMG_HEIGHT) / img.shape[0]
         img = cv2.resize(img, (int(img.shape[1]*rate), IMG_HEIGHT), interpolation=cv2.INTER_AREA)
 
-        if self.augmentation: # augmentation for training data
-            img = np.expand_dims(img, -1) # H*W*C to a PIL Image
-            img = self.transform(img)
-            img = np.array(img)
-
-        #ret, mask = cv2.threshold(img, 175, 255, cv2.THRESH_BINARY_INV)
-        img = img.astype('float32')
         img_width = img.shape[-1]
-        #img = self.norm(torch.from_numpy(img))
-        #img = img.numpy()
 
         if flip: # because of using pack_padded_sequence, first flip, then pad it
             img = np.flip(img, 1)
@@ -123,24 +128,19 @@ class IAM_words(D.Dataset):
             thresh = int(thresh)
         url = baseDir + 'words/' + file_name + '.png'
         img = cv2.imread(url, 0)
-        if RM_BACKGROUND:
-            img[img>thresh] = 255
-        img = 255 - img
+        size = img.shape[0] * img.shape[1]
+        if self.augmentation and size > 100: # augmentation for training data
+            img = self.transformer(img)
+        else: # evaluation
+            if RM_BACKGROUND:
+                img[img>thresh] = 255
+                img = 255 - img
         img = img/255. #float64
         img = img.astype('float32')
         rate = float(IMG_HEIGHT) / img.shape[0]
         img = cv2.resize(img, (int(img.shape[1]*rate), IMG_HEIGHT), interpolation=cv2.INTER_AREA)
 
-        if self.augmentation: # augmentation for training data
-            img = np.expand_dims(img, -1) # H*W*C to a PIL Image
-            img = self.transform(img)
-            img = np.array(img)
-
-        #ret, mask = cv2.threshold(img, 175, 255, cv2.THRESH_BINARY_INV)
-        img = img.astype('float32')
         img_width = img.shape[-1]
-        #img = self.norm(torch.from_numpy(img))
-        #img = img.numpy()
 
         if flip:
             img = np.flip(img, 1)

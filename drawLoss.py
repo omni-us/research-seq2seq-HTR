@@ -34,7 +34,7 @@ loss_test, = plt.plot(loss_data_t, 'go')
 plt.legend([loss_train, loss_valid, loss_test], ['training loss', 'validation loss', 'testing loss'])
 
 plt.xlabel('epoch')
-#plt.ylim(0, 1)
+plt.ylim(0, 5)
 plt.title('loss')
 plt.show()
 
