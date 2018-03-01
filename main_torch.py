@@ -13,16 +13,17 @@ import os
 import cv2
 from LogMetric import Logger
 
-torch.cuda.set_device(0)
+torch.cuda.set_device(1)
 Bi_GRU = True
 print_shape_flag = True
 CON_STEP = False
 VISUALIZE_TRAIN = False
+EARLY_STOPPING = True
 
 if CON_STEP:
     STEP = 4 # encoder output squeeze step
 #BATCH_SIZE = 256
-BATCH_SIZE = 76
+BATCH_SIZE = 90
 
 CurriculumLearning = False
 
@@ -467,6 +468,11 @@ opt = optim.Adam(seq2seq.parameters(), lr=learning_rate)
 scheduler = optim.lr_scheduler.MultiStepLR(opt, milestones=[70, 120], gamma=0.5)
 epochs = 5000000
 logger = Logger('logs_tensorboard')
+if EARLY_STOPPING:
+    min_loss = 1e3
+    min_loss_index = 0
+    min_loss_count = 0
+
 for epoch in range(epochs):
     data_train, data_valid, data_test = loadData.loadData() # reload to shuffle train data
     #data_train, data_valid, data_test = loadData.loadData_sample() # reload to shuffle train data
@@ -565,6 +571,16 @@ for epoch in range(epochs):
     total_loss_t /= len(data_valid)//BATCH_SIZE
     writeLoss(total_loss_t, 'valid')
     print('  Valid loss=%.3f, time=%.3f' % (total_loss_t, time.time()-start_t))
+    if EARLY_STOPPING:
+        if total_loss_t < min_loss:
+            min_loss = total_loss_t
+            min_loss_index = epoch
+            min_loss_count = 0
+        else:
+            min_loss_count += 1
+        if min_loss_count >= 10:
+            print('Early Stopping at: %d. Best epoch is: %d' % (epoch, min_loss_index))
+            break
 
     if epoch%10 == 0:
         os.system('python3 pytasas.py '+str(epoch+1)+' no')

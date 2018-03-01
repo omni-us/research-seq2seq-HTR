@@ -89,10 +89,13 @@ class IAM_words(D.Dataset):
         img = cv2.imread(url, 0)
         size = img.shape[0] * img.shape[1]
         # c04-066-01-08.png 4*3, for too small images do not augment
-        if self.augmentation and size > 100: # augmentation for training data
+        if self.augmentation: # augmentation for training data
             img_new = self.transformer(img)
             if img_new.shape[0] ==0 or img_new.shape[1] == 0:
-                print(file_name, img_new.shape)
+                print(file_name, img.shape, img_new.shape)
+                with open('list.lst', 'a') as f:
+                    f.write(file_name)
+                    f.write('\n')
                 if RM_BACKGROUND:
                     img[img>thresh] = 255
                 img = 255 - img
