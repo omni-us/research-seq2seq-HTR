@@ -87,7 +87,6 @@ class IAM_words(D.Dataset):
             thresh = int(thresh)
         url = baseDir + 'words/' + file_name + '.png'
         img = cv2.imread(url, 0)
-<<<<<<< HEAD
         #img = cv2.resize(img, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         #size = img.shape[0] * img.shape[1]
         # c04-066-01-08.png 4*3, for too small images do not augment
@@ -95,17 +94,6 @@ class IAM_words(D.Dataset):
             img_new = self.transformer(img)
             if img_new.shape[0] == 0 or img_new.shape[1] == 0:
                 print(file_name, img_new.shape)
-=======
-        size = img.shape[0] * img.shape[1]
-        # c04-066-01-08.png 4*3, for too small images do not augment
-        if self.augmentation: # augmentation for training data
-            img_new = self.transformer(img)
-            if img_new.shape[0] ==0 or img_new.shape[1] == 0:
-                print(file_name, img.shape, img_new.shape)
-                with open('list.lst', 'a') as f:
-                    f.write(file_name)
-                    f.write('\n')
->>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
                 if RM_BACKGROUND:
                     img[img>thresh] = 255
                 img = 255 - img
@@ -118,11 +106,7 @@ class IAM_words(D.Dataset):
         img = img/255. #float64
         img = img.astype('float32')
         rate = float(IMG_HEIGHT) / img.shape[0]
-<<<<<<< HEAD
         img = cv2.resize(img, (int(img.shape[1]*rate)+1, IMG_HEIGHT), interpolation=cv2.INTER_CUBIC) # INTER_AREA con error
-=======
-        img = cv2.resize(img, (int(img.shape[1]*rate), IMG_HEIGHT), interpolation=cv2.INTER_AREA)
->>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 
         img_width = img.shape[-1]
 

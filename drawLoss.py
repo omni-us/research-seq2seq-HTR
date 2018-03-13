@@ -8,11 +8,7 @@ elif len(sys.argv) == 2:
 else:
     print('Usage: python3 drawLoss.py <epoch>')
     exit()
-<<<<<<< HEAD
 base = 'pred_logs_layer_1/'
-=======
-base = 'pred_logs/'
->>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 
 loss = open(base+'loss_train.log', 'r')
 loss_v = open(base+'loss_valid.log', 'r')
