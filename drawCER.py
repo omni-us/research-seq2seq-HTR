@@ -1,4 +1,21 @@
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
+#import sys
+import argparse
+
+parser = argparse.ArgumentParser('Draw CER')
+parser.add_argument('flag', type=str, help='si/no with/without testing')
+#parser.add_argument('folder', type=str, help='pred_logs_layer_1 or others')
+args = parser.parse_args()
+flag = args.flag
+#base = args.folder+'/'
+base = 'pred_logs/'
+#if len(sys.argv) != 2:
+#    print('Usage: python3 drawCER.py si/no (with or without testing)')
+#    exit()
+#flag = sys.argv[1]
+#base = 'pred_logs/'
+=======
 import sys
 
 if len(sys.argv) != 2:
@@ -8,6 +25,7 @@ if len(sys.argv) != 2:
 flag = sys.argv[1]
 
 base = 'pred_logs/'
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 
 cer = open(base+'cer_train.log', 'r')
 cer_data = cer.read().split(' ')[:-1]
@@ -38,6 +56,10 @@ else:
 plt.xlabel('epoch')
 plt.ylim(0, 1)
 plt.title('character error rate')
+<<<<<<< HEAD
+plt.grid(color='m', linestyle='--', linewidth=0.5)
+=======
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 plt.show()
 
 cer.close()

@@ -2,9 +2,15 @@ import cv2
 import numpy as np
 import random
 
+<<<<<<< HEAD
+def augmentor(img):
+    TH,TW=img.shape
+
+=======
 # img: grayscale image: 0-255
 def augmentor(img):
     TH,TW=img.shape
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
     param_gamma_low=.3
     param_gamma_high=2
 
@@ -54,6 +60,13 @@ def augmentor(img):
     # Kanungo noise
     dist = cv2.distanceTransform(1-binarized, cv2.DIST_L1, 3)  # try cv2.DIST_L1 for newer versions of OpenCV
     dist2 = cv2.distanceTransform(binarized, cv2.DIST_L1, 3) # try cv2.DIST_L1 for newer versions of OpenCV
+<<<<<<< HEAD
+
+    dist = dist.astype('float64') # Tro add
+    dist2 = dist2.astype('float64') # Tro add
+
+=======
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
     P=(param_kanungo_alpha0*np.exp(-param_kanungo_alpha * dist**2)) + param_kanungo_mu
     P2=(param_kanungo_beta0*np.exp(-param_kanungo_beta * dist2**2)) + param_kanungo_mu
     distorted=binarized.copy()
@@ -65,11 +78,24 @@ def augmentor(img):
     pseudo_binarized = closing * (255-gammacorrected)
     canvas=np.zeros((3*TH,3*TW),dtype=np.uint8)
     canvas[TH:2*TH,TW:2*TW]=pseudo_binarized
+<<<<<<< HEAD
+    points=[]
+    count = 0 # Tro add
+    while(len(points)<1):
+        count += 1 # Tro add
+        if count > 100: # Tro add
+            break # Tro add
+
+    	# random shear
+        shear_angle=np.random.uniform(param_min_shear,param_max_shear)
+        M=np.float32([[1,shear_angle,0],[0,1,0]])
+=======
 
     # random shear
     points=[]
     while(len(points)<1):
         M=np.float32([[1,np.random.uniform(param_min_shear,param_max_shear),0],[0,1,0]])
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
         sheared = cv2.warpAffine(canvas,M,(3*TW,3*TH),flags=cv2.WARP_INVERSE_MAP|cv2.INTER_CUBIC)
 
         # random rotation
@@ -84,6 +110,21 @@ def augmentor(img):
         points = np.argwhere(scaled!=0)
         points = np.fliplr(points)
 
+<<<<<<< HEAD
+    if len(points) < 1: # Tro add
+        return pseudo_binarized
+
+    r = cv2.boundingRect(np.array([points]))
+
+    #random cropping
+    deltax=random.randint(-param_movement_BB,param_movement_BB)
+    deltay=random.randint(-param_movement_BB,param_movement_BB)
+    x1=min(scaled.shape[0]-1,max(0,r[1]+deltax))
+    y1=min(scaled.shape[1]-1,max(0,r[0]+deltay))
+    x2=min(scaled.shape[0],x1+r[3])
+    y2=min(scaled.shape[1],y1+r[2])
+    final_image=np.uint8(scaled[x1:x2,y1:y2])
+=======
     r = cv2.boundingRect(np.array([points]))
     #random cropping
     move1=random.randint(-param_movement_BB,param_movement_BB)
@@ -92,6 +133,7 @@ def augmentor(img):
     move4=random.randint(-param_movement_BB,param_movement_BB)
 
     final_image=np.uint8(scaled[r[1]+move1:r[1]+r[3]+move2,r[0]+move3:r[0]+r[2]+move4])
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 
     return final_image
 

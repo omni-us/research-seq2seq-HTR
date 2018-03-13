@@ -209,6 +209,43 @@ def loadData():
     return data_train, data_valid, data_test
 
 def loadData_sample():
+<<<<<<< HEAD
+    if RM_BACKGROUND:
+        gt_tr = 'iam_word_gt_final.train.thresh'
+        gt_va = 'iam_word_gt_final.valid.thresh'
+        gt_te = 'iam_word_gt_final.test.thresh'
+    else:
+        gt_tr = 'iam_word_gt_final.train'
+        gt_va = 'iam_word_gt_final.valid'
+        gt_te = 'iam_word_gt_final.test'
+
+    with open(baseDir+gt_tr, 'r') as f_tr:
+        data_tr = f_tr.readlines()[:512]
+        file_label_tr = [i[:-1].split(' ') for i in data_tr]
+
+    with open(baseDir+gt_va, 'r') as f_va:
+        data_va = f_va.readlines()[:512]
+        file_label_va = [i[:-1].split(' ') for i in data_va]
+
+    with open(baseDir+gt_te, 'r') as f_te:
+        data_te = f_te.readlines()[:512]
+        file_label_te = [i[:-1].split(' ') for i in data_te]
+
+    #total_num_tr = len(file_label_tr)
+    #total_num_va = len(file_label_va)
+    #total_num_te = len(file_label_te)
+    #print('Loading training data ', total_num_tr)
+    #print('Loading validation data ', total_num_va)
+    #print('Loading testing data ', total_num_te)
+
+    np.random.shuffle(file_label_tr)
+    data_train = IAM_words(file_label_tr, augmentation=True)
+    data_valid = IAM_words(file_label_va, augmentation=False)
+    data_test = IAM_words(file_label_te, augmentation=False)
+    return data_train, data_valid, data_test
+
+
+=======
     with open(baseDir+'iam_word_gt_final.train', 'r') as f_tr:
         data_tr = f_tr.readlines()[:512]
         file_label_tr = [i[:-1].split(' ') for i in data_tr]
@@ -234,6 +271,7 @@ def loadData_sample():
     data_test = IAM_words(file_label_te)
     return data_train, data_valid, data_test
 
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 #train_loader = D.DataLoader(data_train, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
 #valid_loader = D.DataLoader(data_valid, batch_size=BATCH_SIZE, pin_memory=True)
 #test_loader = D.DataLoader(data_test, batch_size=BATCH_SIZE, pin_memory=True)

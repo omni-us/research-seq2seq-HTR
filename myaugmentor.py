@@ -5,7 +5,11 @@ import random
 
 cv2.namedWindow('display',0)
 
+<<<<<<< HEAD
+img=cv2.imread('./imgs/iamword.png',0)
+=======
 img=cv2.imread('./imgs/iamword.jpg',0)
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 TH,TW=img.shape
 
 param_gamma_low=.3
@@ -30,7 +34,11 @@ param_scale=.2 # one plus minus parameter as scaling factor
 
 param_movement_BB=6 # translation for cropping errors in pixels
 
+<<<<<<< HEAD
+for j in range(500):
+=======
 for i in range(500):
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 	# add gaussian noise
 	gauss = np.random.normal(param_mean_gaussian_noise,param_sigma_gaussian_noise,(TH,TW))
 	gauss = gauss.reshape(TH,TW)
@@ -69,6 +77,39 @@ for i in range(500):
 	pseudo_binarized = closing * (255-gammacorrected)
 	canvas=np.zeros((3*TH,3*TW),dtype=np.uint8)
 	canvas[TH:2*TH,TW:2*TW]=pseudo_binarized
+<<<<<<< HEAD
+	points=[]
+	while(len(points)<1):
+		# random shear
+		shear_angle=np.random.uniform(param_min_shear,param_max_shear)
+		M=np.float32([[1,shear_angle,0],[0,1,0]])
+		sheared = cv2.warpAffine(canvas,M,(3*TW,3*TH),flags=cv2.WARP_INVERSE_MAP|cv2.INTER_CUBIC)
+
+		# random rotation
+		M = cv2.getRotationMatrix2D((3*TW/2,3*TH/2),np.random.uniform(-param_rotation,param_rotation),1)
+		rotated = cv2.warpAffine(sheared,M,(3*TW,3*TH),flags=cv2.WARP_INVERSE_MAP|cv2.INTER_CUBIC)
+
+		# random scaling
+		scaling_factor=np.random.uniform(1-param_scale,1+param_scale)
+		scaled = cv2.resize(rotated,None,fx=scaling_factor,fy=scaling_factor,interpolation=cv2.INTER_CUBIC)
+
+		# detect cropping parameters
+		points = np.argwhere(scaled!=0)
+		points = np.fliplr(points) 
+	r = cv2.boundingRect(np.array([points]))
+
+	#random cropping
+	deltax=random.randint(-param_movement_BB,param_movement_BB)
+	deltay=random.randint(-param_movement_BB,param_movement_BB)
+	x1=min(scaled.shape[0]-1,max(0,r[1]+deltax))
+	y1=min(scaled.shape[1]-1,max(0,r[0]+deltay))
+	x2=min(scaled.shape[0],x1+r[3])
+	y2=min(scaled.shape[1],y1+r[2])
+	final_image=np.uint8(scaled[x1:x2,y1:y2])
+
+
+
+=======
 
 	# random shear
 	M=np.float32([[1,np.random.uniform(param_min_shear,param_max_shear),0],[0,1,0]])
@@ -95,6 +136,7 @@ for i in range(500):
 
 	final_image=np.uint8(scaled[r[1]+move1:r[1]+r[3]+move2,r[0]+move3:r[0]+r[2]+move4])
 	
+>>>>>>> 92930e900d3bf95a0926a0537be87f8b72eb5b40
 	cv2.imshow('display',final_image)
 	k=cv2.waitKey(10)
 	if chr(k&255) == 'q':
