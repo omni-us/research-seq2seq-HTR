@@ -1,2 +1,3 @@
 ./clear.sh
-python3 main_torch.py
+export CUDA_VISIBLE_DEVICES=1
+python3 main_torch.py 0

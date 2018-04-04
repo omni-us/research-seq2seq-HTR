@@ -1,3 +1,1 @@
-Early Stopping at: 177. Best epoch is: 147
-
-
+Early Stopping at: 123. Best epoch is: 103

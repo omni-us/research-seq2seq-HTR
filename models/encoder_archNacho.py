@@ -22,34 +22,37 @@ class Encoder(nn.Module):
         self.dropout = 0.5
 
         self.layer0 = nn.Sequential(
-                nn.Conv2d(1, 48, 3, padding=1),
+                nn.Conv2d(1, 32, 3, padding=1),
                 nn.ReLU(),
-                nn.BatchNorm2d(48),
-                nn.MaxPool2d(2))
+                nn.Conv2d(32, 32, 3, padding=1),
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(32))
+
         self.layer1 = nn.Sequential(
-                nn.Conv2d(48, 128, 3, padding=1),
+                nn.Conv2d(32, 64, 3, padding=1),
                 nn.ReLU(),
-                nn.BatchNorm2d(128),
-                nn.MaxPool2d(2))
+                nn.Conv2d(64, 64, 3, padding=1),
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(64))
+
         self.layer2 = nn.Sequential(
-                nn.Conv2d(128, 192, 3, padding=1),
+                nn.Conv2d(64, 128, 3, padding=1),
                 nn.ReLU(),
-                nn.BatchNorm2d(192),
-                )
+                nn.Conv2d(128, 128, 3, padding=1),
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(128))
+
         self.layer3 = nn.Sequential(
-                nn.Conv2d(192, 192, 3, padding=1),
+                nn.Conv2d(128, 256, 3, padding=1),
                 nn.ReLU(),
-                nn.BatchNorm2d(192),
-                )
-        self.layer4 = nn.Sequential(
-                nn.Conv2d(192, 128, 3, padding=1),
-                nn.ReLU(),
-                nn.BatchNorm2d(128),
-                nn.MaxPool2d(2))
+                nn.BatchNorm2d(256))
 
         if self.step is not None:
             #self.output_proj = nn.Linear((((((self.height-2)//2)-2)//2-2-2-2)//2)*128*self.step, self.hidden_size)
-            self.output_proj = nn.Linear(self.height//8*128*self.step, self.height//8*128)
+            self.output_proj = nn.Linear(self.height//8*256*self.step, self.height//8*256)
 
         if LSTM:
             RNN = nn.LSTM
@@ -57,12 +60,12 @@ class Encoder(nn.Module):
             RNN = nn.GRU
 
         if self.bi: #8: 3 MaxPool->2**3    128: last hidden_size of layer4
-            self.rnn = RNN(self.height//8*128, self.hidden_size, self.n_layers, dropout=self.dropout, bidirectional=True)
+            self.rnn = RNN(self.height//8*256, self.hidden_size, self.n_layers, dropout=self.dropout, bidirectional=True)
             if SUM_UP:
                 self.enc_out_merge = lambda x: x[:,:,:x.shape[-1]//2] + x[:,:,x.shape[-1]//2:]
                 self.enc_hidden_merge = lambda x: (x[0] + x[1]).unsqueeze(0)
         else:
-            self.rnn = RNN(self.height//8*128, self.hidden_size, self.n_layers, dropout=self.dropout, bidirectional=False)
+            self.rnn = RNN(self.height//8*256, self.hidden_size, self.n_layers, dropout=self.dropout, bidirectional=False)
 
     # (32, 1, 80, 1400)
     def forward(self, in_data, in_data_len, hidden=None):
@@ -71,12 +74,11 @@ class Encoder(nn.Module):
         out = self.layer1(out) # (32, 64, 18, 348)
         out = self.layer2(out) # (32, 128, 8, 173)
         out = self.layer3(out)
-        out = self.layer4(out) # [128, 128, 4, 122]
         #out.register_hook(print)
         out = out.permute(3, 0, 2, 1) # (width, batch, height, channels)
         out.contiguous()
         #out = out.view(-1, batch_size, (((((self.height-2)//2)-2)//2-2-2-2)//2)*128) # (t, b, f) (173, 32, 1024)
-        out = out.view(-1, batch_size, self.height//8*128)
+        out = out.view(-1, batch_size, self.height//8*256)
         if self.step is not None:
             time_step, batch_size, n_feature = out.shape[0], out.shape[1], out.shape[2]
             out_short = Variable(torch.zeros(time_step//self.step, batch_size, n_feature*self.step)).cuda() # t//STEP, b, f*STEP

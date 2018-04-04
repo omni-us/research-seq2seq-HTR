@@ -2,6 +2,12 @@ from torch import nn
 import torch
 from torch.autograd import Variable
 
+#torch.cuda.set_device(1)
+
+ATTN_SMOOTH = True
+K = 128 # the filters of location attention
+R = 7 # window size of the kernel
+
 # Standard Bahdanau Attention
 class BahdanauAttention(nn.Module):
     def __init__(self, hidden_size, decoder_layer):
@@ -16,7 +22,8 @@ class BahdanauAttention(nn.Module):
         self.out = nn.Linear(hidden_size, 1)
 
     # hidden: b, f  encoder_output: t, b, f  enc_len: numpy
-    def forward(self, hidden, encoder_output, enc_len):
+    def forward(self, hidden, encoder_output, enc_len, prev_attention):
+        # prev_attention will not be used aqui
         encoder_output = encoder_output.transpose(0, 1) # b, t, f
         attn_energy = self.score(hidden, encoder_output) # b, t
 
@@ -49,13 +56,21 @@ class TroAttention(nn.Module):
         super(TroAttention, self).__init__()
         self.hidden_size = hidden_size
         self.decoder_layer = decoder_layer
-        self.softmax = nn.Softmax(dim=0)
         self.proj = nn.Linear(self.hidden_size, self.hidden_size)
         #self.relu = nn.ReLU()
         self.tanh = nn.Tanh()
         self.hidden_proj = nn.Linear(self.hidden_size, self.hidden_size)
         #self.encoder_output_proj = nn.Linear(self.hidden_size, self.hidden_size)
         self.out = nn.Linear(hidden_size, 1)
+        self.softmax = nn.Softmax(dim=0)
+        self.sigmoid = nn.Sigmoid()
+        if ATTN_SMOOTH:
+            self.sigma = self.attn_smoothing
+        else:
+            self.sigma = self.softmax
+
+    def attn_smoothing(self, x):
+        return self.sigmoid(x) / self.sigmoid(x).sum()
 
     # hidden: layers, b, f  encoder_output: t, b, f  enc_len: numpy
     def forward(self, hidden, encoder_output, enc_len, prev_attention):
@@ -65,7 +80,7 @@ class TroAttention(nn.Module):
 
         attn_weight = Variable(torch.zeros(attn_energy.shape)).cuda()
         for i, le in enumerate(enc_len):
-            attn_weight[i, :le] = self.softmax(attn_energy[i, :le])
+            attn_weight[i, :le] = self.sigma(attn_energy[i, :le])
         return attn_weight.unsqueeze(2)
 
     # hidden: layers, batch, features
@@ -90,17 +105,25 @@ class TroAttention(nn.Module):
 class locationAttention(nn.Module):
     def __init__(self, hidden_size, decoder_layer):
         super(locationAttention, self).__init__()
-        k = 64 # the filters of location attention
-        r = 7 # window size of the kernel
+        k = K # the filters of location attention
+        r = R # window size of the kernel
         self.hidden_size = hidden_size
         self.decoder_layer = decoder_layer
-        self.softmax = nn.Softmax(dim=0)
         self.proj = nn.Linear(self.hidden_size, self.hidden_size)
         self.tanh = nn.Tanh()
         self.hidden_proj = nn.Linear(self.hidden_size, self.hidden_size)
         self.out = nn.Linear(hidden_size, 1)
         self.conv1d = nn.Conv1d(1, k, r, padding=3)
         self.prev_attn_proj = nn.Linear(k, self.hidden_size)
+        self.softmax = nn.Softmax(dim=0)
+        self.sigmoid = nn.Sigmoid()
+        if ATTN_SMOOTH:
+            self.sigma = self.attn_smoothing
+        else:
+            self.sigma = self.softmax
+
+    def attn_smoothing(self, x):
+        return self.sigmoid(x) / self.sigmoid(x).sum()
 
     # hidden:         layers, b, f
     # encoder_output: t, b, f
@@ -111,7 +134,7 @@ class locationAttention(nn.Module):
 
         attn_weight = Variable(torch.zeros(attn_energy.shape)).cuda()
         for i, le in enumerate(enc_len):
-            attn_weight[i, :le] = self.softmax(attn_energy[i, :le])
+            attn_weight[i, :le] = self.sigma(attn_energy[i, :le])
         return attn_weight.unsqueeze(2)
 
     # encoder_output: b, t, f

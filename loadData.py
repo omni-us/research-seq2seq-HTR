@@ -175,9 +175,9 @@ class IAM_words(D.Dataset):
 
 def loadData():
     if RM_BACKGROUND:
-        gt_tr = 'iam_word_gt_final.train.thresh'
-        gt_va = 'iam_word_gt_final.valid.thresh'
-        gt_te = 'iam_word_gt_final.test.thresh'
+        gt_tr = 'RWTH.iam_word_gt_final.train.thresh'
+        gt_va = 'RWTH.iam_word_gt_final.valid.thresh'
+        gt_te = 'RWTH.iam_word_gt_final.test.thresh'
     else:
         gt_tr = 'iam_word_gt_final.train'
         gt_va = 'iam_word_gt_final.valid'
@@ -251,23 +251,41 @@ def loadData_sample():
 if __name__ == '__main__':
     import time
     start = time.time()
-    data_train, data_valid, data_test = loadData()
-    maxLen = max(data_train[:]['in_len_sa'])
-    num = data_train[:]['in_len_sa'].index(maxLen)
-    idx = data_train[:]['index_sa'][num]
-    print('[Train] Max length: ', maxLen, idx)
+    SHOW_IMG = True
+    imgName = 'p03-080-05-02.png'
+    if SHOW_IMG:
+        img = cv2.imread(baseDir+'words/'+imgName, 0)
+        data = IAM_words(None, augmentation=True)
+        out_imgs = [data.readImage_keepRatio(imgName.split('.')[0]+',167', False)[0] for i in range(20)]
+        rate = float(IMG_HEIGHT) / img.shape[0]
+        img = cv2.resize(img, (int(img.shape[1]*rate), IMG_HEIGHT), interpolation=cv2.INTER_AREA)
+        outImg = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype='float32')
+        outImg[:, :img.shape[1]] = img
+        outImg /= 255
+        final_img = np.vstack((outImg, *out_imgs))
+        rate = 800 / final_img.shape[0]
+        final_img2 = cv2.resize(final_img, (int(final_img.shape[1]*rate), 800), interpolation=cv2.INTER_AREA)
+        cv2.imshow('Augmentor', final_img2)
+        cv2.waitKey(0)
 
-    maxLen = max(data_valid[:]['in_len_sa'])
-    num = data_valid[:]['in_len_sa'].index(maxLen)
-    idx = data_valid[:]['index_sa'][num]
-    print('[Valid] Max length: ', maxLen, idx)
+    else:
+        data_train, data_valid, data_test = loadData()
+        maxLen = max(data_train[:]['in_len_sa'])
+        num = data_train[:]['in_len_sa'].index(maxLen)
+        idx = data_train[:]['index_sa'][num]
+        print('[Train] Max length: ', maxLen, idx)
 
-    maxLen = max(data_test[:]['in_len_sa'])
-    num = data_test[:]['in_len_sa'].index(maxLen)
-    idx = data_test[:]['index_sa'][num]
-    print('[Test] Max length: ', maxLen, idx)
-    print('tiempo de uso: %.3f' % (time.time()-start))
+        maxLen = max(data_valid[:]['in_len_sa'])
+        num = data_valid[:]['in_len_sa'].index(maxLen)
+        idx = data_valid[:]['index_sa'][num]
+        print('[Valid] Max length: ', maxLen, idx)
 
-    #print(global_filename)
-    #print(global_length)
+        maxLen = max(data_test[:]['in_len_sa'])
+        num = data_test[:]['in_len_sa'].index(maxLen)
+        idx = data_test[:]['index_sa'][num]
+        print('[Test] Max length: ', maxLen, idx)
+        print('tiempo de uso: %.3f' % (time.time()-start))
+
+        #print(global_filename)
+        #print(global_length)
 

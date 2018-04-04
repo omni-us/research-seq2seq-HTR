@@ -2,47 +2,52 @@ import torch
 from torch import optim
 from torch.autograd import Variable
 import torch.nn.functional as F
-#import loadData2 as loadData
-import loadData
+import loadData2 as loadData
+#import loadData
 import numpy as np
 import time
 import os
 import cv2
 from LogMetric import Logger
-#import argparse
+import argparse
 from models.encoder import Encoder
 from models.decoder import Decoder
 from models.attention import locationAttention as Attention
+#from models.attention import TroAttention as Attention
 from models.seq2seq import Seq2Seq
 
-print(time.ctime())
-#parser = argparse.ArgumentParser(description='seq2seq net', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-#parser.add_argument('layers', type=int, help='decoder layer numbers')
-#args = parser.parse_args()
+parser = argparse.ArgumentParser(description='seq2seq net', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('start_epoch', type=int, help='load saved weights from which epoch')
+args = parser.parse_args()
 
-torch.cuda.set_device(1)
+#torch.cuda.set_device(1)
+
 Bi_GRU = True
-VISUALIZE_TRAIN = False
+VISUALIZE_TRAIN = True
 TF_LOG = False
 
-BATCH_SIZE = 80
-EARLY_STOP_EPOCH = 20 # None: no early stopping
-DECODER_LAYER = 1
-HIDDEN_SIZE_ENC = 512
-HIDDEN_SIZE_DEC = 512
-CON_STEP = None # CON_STEP = 4 # encoder output squeeze step
-CurriculumLearning = False
-MODEL_FILE = 'save_weights/seq2seq-170.model.backup'
-EMBEDDING_SIZE = 60 # IAM
-TRADEOFF_CONTEXT_EMBED = None # = 5 tradeoff between embedding:context vector = 1:5
-learning_rate = 1e-4
-lr_milestone = [60, 100]
+BATCH_SIZE = 180
+#learning_rate = 1e-4
+#lr_milestone = [60, 100]
+learning_rate = 2 * 1e-4
+lr_milestone = [600, 1000]
 lr_gamma = 0.5
+
+START_TEST = 1e4 # 1e4: never run test 0: run test from beginning
 FREEZE = False
 freeze_milestone = [65, 90]
+EARLY_STOP_EPOCH = 20 # None: no early stopping
+DECODER_LAYER = 1
+HIDDEN_SIZE_ENC = 1024
+HIDDEN_SIZE_DEC = 1024 # model/encoder.py SUM_UP=False: enc:dec = 1:2  SUM_UP=True: enc:dec = 1:1
+CON_STEP = None # CON_STEP = 4 # encoder output squeeze step
+CurriculumModelID = args.start_epoch
+#CurriculumModelID = -1 # < 0: do not use curriculumLearning, train from scratch
+#CurriculumModelID = 170 # 'save_weights/seq2seq-170.model.backup'
+EMBEDDING_SIZE = 60 # IAM
+TRADEOFF_CONTEXT_EMBED = None # = 5 tradeoff between embedding:context vector = 1:5
 TEACHER_FORCING = True
-MODEL_SAVE_EPOCH = 5
-TEST = False # True: train, valid, test  False: train, valid
+MODEL_SAVE_EPOCH = 1
 
 HEIGHT = loadData.IMG_HEIGHT
 WIDTH = loadData.IMG_WIDTH
@@ -52,6 +57,15 @@ num_tokens = loadData.num_tokens
 vocab_size = loadData.num_classes + num_tokens
 index2letter = loadData.index2letter
 FLIP = loadData.FLIP
+
+def teacher_force_func(epoch):
+    if epoch < 50:
+        teacher_rate = 0.5
+    elif epoch < 150:
+        teacher_rate = (50 - (epoch-50)//2) / 100.
+    else:
+        teacher_rate = 0.
+    return teacher_rate
 
 def visualizeAttn(img, first_img_real_len, attn, epoch, batches, name):
     folder_name = 'imgs'
@@ -149,10 +163,12 @@ def sort_batch(data):
 
 def train():
     encoder = Encoder(HIDDEN_SIZE_ENC, HEIGHT, WIDTH, Bi_GRU, CON_STEP, FLIP).cuda()
-    decoder = Decoder(HIDDEN_SIZE_DEC, EMBEDDING_SIZE, DECODER_LAYER, vocab_size, Bi_GRU, Attention, TRADEOFF_CONTEXT_EMBED).cuda()
+    decoder = Decoder(HIDDEN_SIZE_DEC, EMBEDDING_SIZE, DECODER_LAYER, vocab_size, Attention, TRADEOFF_CONTEXT_EMBED).cuda()
     seq2seq = Seq2Seq(encoder, decoder, output_max_len, vocab_size).cuda()
-    if CurriculumLearning:
-        seq2seq.load_state_dict(torch.load(MODEL_FILE)) #load
+    if CurriculumModelID > 0:
+        model_file = 'save_weights/seq2seq-' + str(CurriculumModelID) +'.model'
+        print('Loading ' + model_file)
+        seq2seq.load_state_dict(torch.load(model_file)) #load
     opt = optim.Adam(seq2seq.parameters(), lr=learning_rate)
     #opt = optim.SGD(seq2seq.parameters(), lr=learning_rate, momentum=0.9)
     #opt = optim.RMSprop(seq2seq.parameters(), lr=learning_rate, momentum=0.9)
@@ -167,7 +183,11 @@ def train():
         min_loss_index = 0
         min_loss_count = 0
 
-    for epoch in range(epochs):
+    if CurriculumModelID > 0:
+        start_epoch = CurriculumModelID + 1
+    else:
+        start_epoch = 0
+    for epoch in range(start_epoch, epochs):
         data_train, data_valid, data_test = loadData.loadData() # reload to shuffle train data
         #data_train, data_valid, data_test = loadData.loadData_sample() # reload to shuffle train data
         total_loss = 0
@@ -184,16 +204,14 @@ def train():
                 for param in decoder.parameters():
                     param.requires_grad = True
 
-        if TEACHER_FORCING:
-            if epoch < 50:
-                teacher_rate = 0.5
-            elif epoch < 150:
-                teacher_rate = (50 - (epoch-50)//2) / 100.
-            else:
-                teacher_rate = 0.
+        teacher_rate = teacher_force_func(epoch) if TEACHER_FORCING else False
 
         seq2seq.train()
-        for i in range(len(data_train)//BATCH_SIZE + 1):
+        if len(data_train) % BATCH_SIZE == 0:
+            range_num = len(data_train) // BATCH_SIZE
+        else:
+            range_num = len(data_train)//BATCH_SIZE + 1
+        for i in range(range_num):
             #print('batch %d / %d' % (i, len(data_train)//BATCH_SIZE))
             if TF_LOG:
                 logger.add_scalar('learning_rate', lr, 'train')
@@ -236,7 +254,11 @@ def train():
         seq2seq.eval()
         total_loss_t = 0
         start_t = time.time()
-        for i in range(len(data_valid)//BATCH_SIZE + 1):
+        if len(data_valid) % BATCH_SIZE == 0:
+            range_num = len(data_valid) // BATCH_SIZE
+        else:
+            range_num = len(data_valid)//BATCH_SIZE + 1
+        for i in range(range_num):
             data_t = data_valid[i*BATCH_SIZE: (i+1)*BATCH_SIZE]
             test_index, test_in, test_in_len, test_out = sort_batch(data_t)
             test_in = test_in.unsqueeze(1)
@@ -245,7 +267,7 @@ def train():
             writePredict(epoch, test_index, output_t, 'valid')
             test_label = test_out.permute(1, 0)[1:].contiguous().view(-1)
             loss_t = F.cross_entropy(output_t.view(-1, vocab_size),
-                                     test_label)
+                                     test_label, ignore_index=tokens['PAD_TOKEN'])
             total_loss_t += loss_t.data[0]
 
             if i == 0:
@@ -270,36 +292,83 @@ def train():
                 min_loss_count += 1
             if min_loss_count >= EARLY_STOP_EPOCH:
                 print('Early Stopping at: %d. Best epoch is: %d' % (epoch, min_loss_index))
-                break
+                return min_loss_index
+                #break
 
-        if TEST:
+        if epoch > START_TEST:
             seq2seq.eval()
             total_loss_t = 0
             start_t = time.time()
-            for i in range(len(data_test)//BATCH_SIZE + 1):
+            if len(data_test) % BATCH_SIZE == 0:
+                range_num = len(data_test) // BATCH_SIZE
+            else:
+                range_num = len(data_test)//BATCH_SIZE + 1
+            for i in range(range_num):
                 data_t = data_test[i*BATCH_SIZE: (i+1)*BATCH_SIZE]
                 test_index, test_in, test_in_len, test_out = sort_batch(data_t)
                 test_in = test_in.unsqueeze(1)
                 test_in, test_out = Variable(test_in, volatile=True).cuda(), Variable(test_out, volatile=True).cuda()
                 output_t, attn_weights_t = seq2seq(test_in, test_out, test_in_len, teacher_rate=False, train=False)
-                writePredict(epoch, test_index, output_t, 'valid')
+                writePredict(epoch, test_index, output_t, 'test')
                 test_label = test_out.permute(1, 0)[1:].contiguous().view(-1)
                 loss_t = F.cross_entropy(output_t.view(-1, vocab_size),
-                                         test_label)
+                                         test_label, ignore_index=tokens['PAD_TOKEN'])
                 total_loss_t += loss_t.data[0]
 
                 if i == 0:
                     # (32,1,80,460)->(80,460)  [(32,55),...]->[(55),...]
-                    visualizeAttn(test_in.data[0,0], test_in_len[0], [j[0] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'first')
-                    visualizeAttn(test_in.data[2,0], test_in_len[0], [j[2] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'second')
-                    visualizeAttn(test_in.data[36,0], test_in_len[0], [j[36] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'third')
-                    visualizeAttn(test_in.data[41,0], test_in_len[0], [j[41] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'forth')
+                    visualizeAttn(test_in.data[0,0], test_in_len[0], [j[0] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'test_first')
+                    visualizeAttn(test_in.data[2,0], test_in_len[0], [j[2] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'test_second')
+                    visualizeAttn(test_in.data[36,0], test_in_len[0], [j[36] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'test_third')
+                    visualizeAttn(test_in.data[41,0], test_in_len[0], [j[41] for j in attn_weights_t], epoch, len(data_test)//BATCH_SIZE, 'test_forth')
                 if TF_LOG:
-                    logger.add_scalar('valid_loss', loss_t.data[0], 'valid')
-                    logger.step_valid()
+                    logger.add_scalar('test_loss', loss_t.data[0], 'test')
+                    logger.step_test()
             total_loss_t /= len(data_test)//BATCH_SIZE
             writeLoss(total_loss_t, 'test')
             print('    TEST loss=%.3f, time=%.3f' % (total_loss_t, time.time()-start_t))
 
+def test(modelID):
+    encoder = Encoder(HIDDEN_SIZE_ENC, HEIGHT, WIDTH, Bi_GRU, CON_STEP, FLIP).cuda()
+    decoder = Decoder(HIDDEN_SIZE_DEC, EMBEDDING_SIZE, DECODER_LAYER, vocab_size, Attention, TRADEOFF_CONTEXT_EMBED).cuda()
+    seq2seq = Seq2Seq(encoder, decoder, output_max_len, vocab_size).cuda()
+    model_file = 'save_weights/seq2seq-' + str(modelID) +'.model'
+    print('Loading ' + model_file)
+    seq2seq.load_state_dict(torch.load(model_file)) #load
+    data_train, data_valid, data_test = loadData.loadData() # reload to shuffle train data
+        #data_train, data_valid, data_test = loadData.loadData_sample() # reload to shuffle train data
+    seq2seq.eval()
+    total_loss_t = 0
+    start_t = time.time()
+    if len(data_test) % BATCH_SIZE == 0:
+        range_num = len(data_test) // BATCH_SIZE
+    else:
+        range_num = len(data_test)//BATCH_SIZE + 1
+    for i in range(range_num):
+        data_t = data_test[i*BATCH_SIZE: (i+1)*BATCH_SIZE]
+        test_index, test_in, test_in_len, test_out = sort_batch(data_t)
+        test_in = test_in.unsqueeze(1)
+        test_in, test_out = Variable(test_in, volatile=True).cuda(), Variable(test_out, volatile=True).cuda()
+        output_t, attn_weights_t = seq2seq(test_in, test_out, test_in_len, teacher_rate=False, train=False)
+        writePredict(modelID, test_index, output_t, 'test')
+        test_label = test_out.permute(1, 0)[1:].contiguous().view(-1)
+        loss_t = F.cross_entropy(output_t.view(-1, vocab_size),
+                                 test_label, ignore_index=tokens['PAD_TOKEN'])
+        total_loss_t += loss_t.data[0]
+
+        if i == 0:
+            # (32,1,80,460)->(80,460)  [(32,55),...]->[(55),...]
+            visualizeAttn(test_in.data[0,0], test_in_len[0], [j[0] for j in attn_weights_t], modelID, len(data_test)//BATCH_SIZE, 'test_first')
+            visualizeAttn(test_in.data[2,0], test_in_len[0], [j[2] for j in attn_weights_t], modelID, len(data_test)//BATCH_SIZE, 'test_second')
+            visualizeAttn(test_in.data[36,0], test_in_len[0], [j[36] for j in attn_weights_t], modelID, len(data_test)//BATCH_SIZE, 'test_third')
+            visualizeAttn(test_in.data[41,0], test_in_len[0], [j[41] for j in attn_weights_t], modelID, len(data_test)//BATCH_SIZE, 'test_forth')
+    total_loss_t /= len(data_test)//BATCH_SIZE
+    writeLoss(total_loss_t, 'test')
+    print('    TEST loss=%.3f, time=%.3f' % (total_loss_t, time.time()-start_t))
+
 if __name__ == '__main__':
-    train()
+    time.ctime()
+    mejorModelID = train()
+    test(mejorModelID)
+    os.system('./test.sh '+str(mejorModelID))
+    time.ctime()

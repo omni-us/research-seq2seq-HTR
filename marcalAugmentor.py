@@ -37,15 +37,15 @@ def augmentor(img):
     kernel=np.ones((3,3),np.uint8)
     a=random.choice([1,2,3])
     if a==1:
-    	gaussiannoise=cv2.dilate(gaussiannoise,kernel,iterations=1)
+        gaussiannoise=cv2.dilate(gaussiannoise,kernel,iterations=1)
     elif a==2:
-    	gaussiannoise=cv2.erode(gaussiannoise,kernel,iterations=1)
+        gaussiannoise=cv2.erode(gaussiannoise,kernel,iterations=1)
 
     # add random gamma correction
     gamma=np.random.uniform(param_gamma_low,param_gamma_high)
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255
-    	for i in np.arange(0, 256)]).astype("uint8")
+        for i in np.arange(0, 256)]).astype("uint8")
     gammacorrected = cv2.LUT(np.uint8(gaussiannoise), table)
 
     # binarize image with Otsu
@@ -73,10 +73,10 @@ def augmentor(img):
     count = 0 # Tro add
     while(len(points)<1):
         count += 1 # Tro add
-        if count > 100: # Tro add
+        if count > 50: # Tro add
             break # Tro add
 
-    	# random shear
+        # random shear
         shear_angle=np.random.uniform(param_min_shear,param_max_shear)
         M=np.float32([[1,shear_angle,0],[0,1,0]])
         sheared = cv2.warpAffine(canvas,M,(3*TW,3*TH),flags=cv2.WARP_INVERSE_MAP|cv2.INTER_CUBIC)
@@ -108,4 +108,14 @@ def augmentor(img):
     final_image=np.uint8(scaled[x1:x2,y1:y2])
 
     return final_image
+
+if __name__ == '__main__':
+    imgName = 'p03-080-05-02.png'
+    img = cv2.imread('/home/lkang/datasets/iam_final_words/words/'+imgName, 0)
+    out_imgs = [cv2.resize(augmentor(img), (img.shape[1], img.shape[0]), interpolation=cv2.INTER_AREA) for i in range(20)]
+    final_img = np.vstack((img, *out_imgs))
+    rate = 800 / final_img.shape[0]
+    final_img2 = cv2.resize(final_img, (int(final_img.shape[1]*rate), 800), interpolation=cv2.INTER_AREA)
+    cv2.imshow('Marcal_V3', final_img2)
+    cv2.waitKey(0)
 
