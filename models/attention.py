@@ -112,6 +112,7 @@ class locationAttention(nn.Module):
         self.proj = nn.Linear(self.hidden_size, self.hidden_size)
         self.tanh = nn.Tanh()
         self.hidden_proj = nn.Linear(self.hidden_size, self.hidden_size)
+        self.encoder_output_proj = nn.Linear(self.hidden_size, self.hidden_size)
         self.out = nn.Linear(hidden_size, 1)
         self.conv1d = nn.Conv1d(1, k, r, padding=3)
         self.prev_attn_proj = nn.Linear(k, self.hidden_size)
@@ -152,7 +153,8 @@ class locationAttention(nn.Module):
         conv_prev_attn = conv_prev_attn.permute(0, 2, 1) # b, t, k
         conv_prev_attn = self.prev_attn_proj(conv_prev_attn) # b, t, f
 
-        res_attn = self.tanh(encoder_output + hidden_attn + conv_prev_attn)
+        encoder_output_attn = self.encoder_output_proj(encoder_output)
+        res_attn = self.tanh(encoder_output_attn + hidden_attn + conv_prev_attn)
         out_attn = self.out(res_attn) # b, t, 1
         out_attn = out_attn.squeeze(2) # b, t
         return out_attn

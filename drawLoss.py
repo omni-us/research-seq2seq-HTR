@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
 import sys
+import os
+
+os.system('touch pred_logs/loss_test.log')
 
 if len(sys.argv) == 1:
     n = -1
@@ -8,7 +11,7 @@ elif len(sys.argv) == 2:
 else:
     print('Usage: python3 drawLoss.py <epoch>')
     exit()
-base = 'pred_logs_layer_1/'
+base = 'pred_logs/'
 
 loss = open(base+'loss_train.log', 'r')
 loss_v = open(base+'loss_valid.log', 'r')
@@ -34,8 +37,9 @@ loss_test, = plt.plot(loss_data_t, 'go')
 plt.legend([loss_train, loss_valid, loss_test], ['training loss', 'validation loss', 'testing loss'])
 
 plt.xlabel('epoch')
-plt.ylim(0, 5)
+#plt.ylim(0, 5)
 plt.title('loss')
+plt.grid(color='m', linestyle='--', linewidth=0.5)
 plt.show()
 
 loss.close()

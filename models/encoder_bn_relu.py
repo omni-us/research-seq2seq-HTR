@@ -6,6 +6,7 @@ import numpy as np
 
 #torch.cuda.set_device(1)
 
+DROP_OUT = False
 LSTM = False
 SUM_UP = True
 
@@ -18,35 +19,40 @@ class Encoder(nn.Module):
         self.bi = bgru
         self.step = step
         self.flip = flip
-        self.n_layers = 1
+        self.n_layers = 2
         self.dropout = 0.5
 
         self.layer0 = nn.Sequential(
                 nn.Conv2d(1, 48, 3, padding=1),
-                nn.ReLU(),
                 nn.BatchNorm2d(48),
-                nn.MaxPool2d(2))
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                )
         self.layer1 = nn.Sequential(
                 nn.Conv2d(48, 128, 3, padding=1),
-                nn.ReLU(),
                 nn.BatchNorm2d(128),
-                nn.MaxPool2d(2))
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                )
         self.layer2 = nn.Sequential(
                 nn.Conv2d(128, 192, 3, padding=1),
-                nn.ReLU(),
                 nn.BatchNorm2d(192),
+                nn.ReLU(),
                 )
         self.layer3 = nn.Sequential(
                 nn.Conv2d(192, 192, 3, padding=1),
-                nn.ReLU(),
                 nn.BatchNorm2d(192),
+                nn.ReLU(),
                 )
         self.layer4 = nn.Sequential(
                 nn.Conv2d(192, 128, 3, padding=1),
-                nn.ReLU(),
                 nn.BatchNorm2d(128),
-                nn.MaxPool2d(2))
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                )
 
+        if DROP_OUT:
+            self.layer_dropout = nn.Dropout2d(p=0.5)
         if self.step is not None:
             #self.output_proj = nn.Linear((((((self.height-2)//2)-2)//2-2-2-2)//2)*128*self.step, self.hidden_size)
             self.output_proj = nn.Linear(self.height//8*128*self.step, self.height//8*128)
@@ -72,6 +78,8 @@ class Encoder(nn.Module):
         out = self.layer2(out) # (32, 128, 8, 173)
         out = self.layer3(out)
         out = self.layer4(out) # [128, 128, 4, 122]
+        if DROP_OUT and self.training:
+            out = self.layer_dropout(out)
         #out.register_hook(print)
         out = out.permute(3, 0, 2, 1) # (width, batch, height, channels)
         out.contiguous()
@@ -96,15 +104,18 @@ class Encoder(nn.Module):
         output, output_len = pad_packed_sequence(output, batch_first=False)
         if self.bi and SUM_UP:
             output = self.enc_out_merge(output)
-            hidden = self.enc_hidden_merge(hidden)
+            #hidden = self.enc_hidden_merge(hidden)
        # # output: t, b, f    hidden:  b, f
-        if self.flip:
-            hidden = output[-1]
-            #hidden = hidden.permute(1, 0, 2) # b, 2, f
-            #hidden = hidden.contiguous().view(batch_size, -1) # b, f*2
-        else:
-            hidden = output[0] # b, f*2
-        return output, hidden # t, b, f*2    b, f*2
+        odd_idx = [1, 3, 5, 7, 9, 11]
+        hidden_idx = odd_idx[:self.n_layers]
+        final_hidden = hidden[hidden_idx]
+        #if self.flip:
+        #    hidden = output[-1]
+        #    #hidden = hidden.permute(1, 0, 2) # b, 2, f
+        #    #hidden = hidden.contiguous().view(batch_size, -1) # b, f*2
+        #else:
+        #    hidden = output[0] # b, f*2
+        return output, final_hidden # t, b, f*2    b, f*2
 
     # matrix: b, c, h, w    lens: list size of batch_size
     def conv_mask(self, matrix, lens):

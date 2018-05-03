@@ -6,6 +6,7 @@ def augmentor(img):
     TH,TW=img.shape
 
     param_gamma_low=.3
+    #param_gamma_low=.5 # Nacho fixed
     param_gamma_high=2
 
     param_mean_gaussian_noise=0
@@ -35,7 +36,9 @@ def augmentor(img):
     # randomly erode, dilate or nothing
     # we could move it also after binarization
     kernel=np.ones((3,3),np.uint8)
-    a=random.choice([1,2,3])
+    #a=random.choice([1,2,3])
+    a=random.choice([2,3]) # Nacho fixed
+    #a = 3 # Nacho fixed
     if a==1:
         gaussiannoise=cv2.dilate(gaussiannoise,kernel,iterations=1)
     elif a==2:

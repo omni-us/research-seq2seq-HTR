@@ -1,17 +1,17 @@
 from torch import nn
 import torch
-import torch.nn.functional as F
+#import torch.nn.functional as F
 
 #torch.cuda.set_device(1)
 
 MULTINOMIAL = True
 
 class Decoder(nn.Module):
-    def __init__(self, hidden_size, embedding_size, layers, vocab_size, attention, tradeoff_context_embed):
+    def __init__(self, hidden_size, embedding_size, vocab_size, attention, tradeoff_context_embed):
         super(Decoder, self).__init__()
         self.hidden_size = hidden_size
         self.embed_size = embedding_size
-        self.n_layers = layers
+        self.n_layers = 2
         self.tradeoff = tradeoff_context_embed
         #if bgru:
         #    self.hidden_size = self.hidden_size * 2
@@ -41,7 +41,7 @@ class Decoder(nn.Module):
         if self.tradeoff is not None:
             context = self.context_shrink(context)
 
-        if MULTINOMIAL:
+        if MULTINOMIAL and self.training:
             top1 = torch.multinomial(in_char, 1)
         else:
             top1 = in_char.topk(1)[1] # batch, 1
@@ -52,6 +52,7 @@ class Decoder(nn.Module):
         in_dec = in_dec.unsqueeze(0)
         output, latest_hidden = self.gru(in_dec, hidden) # 1,16,512   3,16,512  nn.GRU
         output = output.squeeze(0)
-        output = F.softmax(self.out(output), dim=1) #(32,62)
+        output = self.out(output)
+        #output = F.softmax(self.out(output), dim=1) #(32,62)
         return output, latest_hidden, attn_weights.squeeze(2) # (32,62), (32,256), (32,55)
 

@@ -23,7 +23,7 @@ class Seq2Seq(nn.Module):
         outputs = outputs.cuda()
         #src = Variable(src)
         out_enc, hidden_enc = self.encoder(src, src_len)
-        # t,b,f    b,f
+        # t,b,f    layers, b,f
         global print_shape_flag
         if print_shape_flag:
             print('First batch shape: (The shape of batches are not same)')
@@ -33,10 +33,10 @@ class Seq2Seq(nn.Module):
         output = Variable(self.one_hot(tar[0].data))
         attns = []
 
-        hidden = hidden_enc.unsqueeze(0) # 1, batch, hidden_size
-
-        init_hidden_dec = [hidden] * self.decoder.n_layers
-        hidden = torch.cat(init_hidden_dec, dim=0)
+        hidden = hidden_enc
+        #hidden = hidden_enc.unsqueeze(0) # 1, batch, hidden_size
+        #init_hidden_dec = [hidden] * self.decoder.n_layers
+        #hidden = torch.cat(init_hidden_dec, dim=0)
         attn_weights = Variable(torch.zeros(out_enc.shape[1], out_enc.shape[0]), requires_grad=True).cuda() # b, t
 
         for t in range(0, self.output_max_len-1): # max_len: groundtruth + <END>

@@ -7,6 +7,8 @@ import marcalAugmentor
 #from torchsample.transforms import RangeNormalize
 #import torch
 
+WORD_LEVEL = True
+
 # train data: 46945
 # valid data: 6445
 # test data: 13752
@@ -14,13 +16,16 @@ import marcalAugmentor
 RM_BACKGROUND = True
 FLIP = False # flip the image
 #BATCH_SIZE = 64
-OUTPUT_MAX_LEN = 23 # max-word length is 21  This value should be larger than 21+2 (<GO>+groundtruth+<END>)
-#OUTPUT_MAX_LEN = 95 # line-level
+if WORD_LEVEL:
+    OUTPUT_MAX_LEN = 23 # max-word length is 21  This value should be larger than 21+2 (<GO>+groundtruth+<END>)
+    IMG_WIDTH = 1011 # m01-084-07-00 max_length
+    baseDir = '/home/lkang/datasets/iam_final_words/'
+else:
+    OUTPUT_MAX_LEN = 95 # line-level
+    IMG_WIDTH = 2227 # m03-118-05.png max_length
+    baseDir = '/home/lkang/datasets/iam_final_lines/'
 IMG_HEIGHT = 64
-#IMG_WIDTH = 2000 # m01-084-07-00 max_length
-IMG_WIDTH = 1011 # m01-084-07-00 max_length
 #IMG_WIDTH = 256 # img_width < 256: padding   img_width > 256: resize to 256
-baseDir = '/home/lkang/datasets/iam_final_words/'
 
 #global_filename = []
 #global_length = []
@@ -81,7 +86,11 @@ class IAM_words(D.Dataset):
         if RM_BACKGROUND:
             file_name, thresh = file_name.split(',')
             thresh = int(thresh)
-        url = baseDir + 'words/' + file_name + '.png'
+        if WORD_LEVEL:
+            subdir = 'words/'
+        else:
+            subdir = 'lines/'
+        url = baseDir + subdir + file_name + '.png'
         img = cv2.imread(url, 0)
         if RM_BACKGROUND:
             img[img>thresh] = 255
@@ -95,7 +104,8 @@ class IAM_words(D.Dataset):
         if self.augmentation: # augmentation for training data
             img_new = self.transformer(img)
             if img_new.shape[0] != 0 and img_new.shape[1] != 0:
-                img = img_new
+                rate = float(IMG_HEIGHT) / img_new.shape[0]
+                img = cv2.resize(img_new, (int(img_new.shape[1]*rate)+1, IMG_HEIGHT), interpolation=cv2.INTER_CUBIC) # INTER_AREA con error
             else:
                 img = 255 - img
             #if img_new.shape[0] == 0 or img_new.shape[1] == 0:
@@ -179,14 +189,19 @@ class IAM_words(D.Dataset):
         return ll, make_weights(new_label_len, self.output_max_len)
 
 def loadData():
-    if RM_BACKGROUND:
-        gt_tr = 'RWTH.iam_word_gt_final.train.thresh'
-        gt_va = 'RWTH.iam_word_gt_final.valid.thresh'
-        gt_te = 'RWTH.iam_word_gt_final.test.thresh'
+    if WORD_LEVEL:
+        subname = 'word'
     else:
-        gt_tr = 'iam_word_gt_final.train'
-        gt_va = 'iam_word_gt_final.valid'
-        gt_te = 'iam_word_gt_final.test'
+        subname = 'line'
+    if RM_BACKGROUND:
+        gt_tr = 'RWTH.iam_'+subname+'_gt_final.train.thresh'
+        gt_va = 'RWTH.iam_'+subname+'_gt_final.valid.thresh'
+        gt_te = 'RWTH.iam_'+subname+'_gt_final.test.thresh'
+    else:
+        pass
+        #gt_tr = 'iam_word_gt_final.train'
+        #gt_va = 'iam_word_gt_final.valid'
+        #gt_te = 'iam_word_gt_final.test'
 
     with open(baseDir+gt_tr, 'r') as f_tr:
         data_tr = f_tr.readlines()
@@ -247,9 +262,14 @@ if __name__ == '__main__':
     import time
     start = time.time()
     SHOW_IMG = True
-    imgName = 'p03-080-05-02'
+    if WORD_LEVEL:
+        imgName = 'p03-080-05-02'
+        subdic = 'words/'
+    else:
+        imgName = 'p03-080-05'
+        subdic = 'lines/'
     if SHOW_IMG:
-        img = cv2.imread(baseDir+'words/'+imgName+'.png', 0)
+        img = cv2.imread(baseDir+subdic+imgName+'.png', 0)
         data = IAM_words(None, augmentation=True)
         out_imgs = [data.readImage_keepRatio(imgName.split('.')[0]+',167', False)[0] for i in range(20)]
 

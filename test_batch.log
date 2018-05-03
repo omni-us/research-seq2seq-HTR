@@ -1,0 +1,76 @@
+pretrain$ python3 test_batch.py 47
+Loading save_weights/seq2seq-47.model
+First batch shape: (The shape of batches are not same)
+torch.Size([6, 1, 256]) 23
+    TEST loss=0.332, time=787.472
+---------batch size: 1---------
+8.353181
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.370, time=480.551
+---------batch size: 2---------
+8.347074
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.382, time=363.706
+---------batch size: 3---------
+8.348296
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.387, time=305.269
+---------batch size: 4---------
+8.351960
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.390, time=271.588
+---------batch size: 5---------
+8.349517
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.392, time=251.662
+---------batch size: 6---------
+8.348296
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.394, time=230.065
+---------batch size: 7---------
+8.347074
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.395, time=214.273
+---------batch size: 8---------
+8.345853
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.396, time=210.140
+---------batch size: 9---------
+8.345853
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.396, time=216.515
+---------batch size: 10---------
+8.348296
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.397, time=200.100
+---------batch size: 11---------
+8.347074
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.398, time=205.416
+---------batch size: 12---------
+8.343410
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.397, time=203.624
+---------batch size: 13---------
+8.347074
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.399, time=195.286
+---------batch size: 14---------
+8.347074
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.399, time=198.470
+---------batch size: 15---------
+8.345853
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.399, time=189.043
+---------batch size: 16---------
+8.340967
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.400, time=188.526
+---------batch size: 17---------
+8.342189
+Loading save_weights/seq2seq-47.model
+    TEST loss=0.400, time=169.852
+---------batch size: 18---------
+8.345853
+

@@ -3,14 +3,12 @@ import subprocess as sub
 import argparse
 
 parser = argparse.ArgumentParser('Tasas for CER')
-parser.add_argument('start_epoch', type=int, help='how many epochs')
-parser.add_argument('end_epoch', type=int, help='how many epochs')
+parser.add_argument('epochs', type=int, help='how many epochs')
 parser.add_argument('flag', type=str, help='si/no with/without testing')
 #parser.add_argument('folder', type=str, help='pred_logs_layer_1 or others')
 args = parser.parse_args()
 
-start_epoch = args.start_epoch
-end_epoch = args.end_epoch
+epochs = args.epochs
 flag = args.flag
 #base = args.folder + '/'
 base = 'pred_logs/'
@@ -24,10 +22,10 @@ f_cer_v = open(base+'cer_valid.log', 'w')
 if flag == 'si':
     f_cer_t = open(base+'cer_test.log', 'w')
 
-for i in range(start_epoch, end_epoch):
-    gt_tr = 'RWTH.iam_line_gt_final.train.thresh'
-    gt_va = 'RWTH.iam_line_gt_final.valid.thresh'
-    gt_te = 'RWTH.iam_line_gt_final.test.thresh'
+for i in range(epochs):
+    gt_tr = 'RWTH.iam_word_gt_final.train.thresh'
+    gt_va = 'RWTH.iam_word_gt_final.valid.thresh'
+    gt_te = 'RWTH.iam_word_gt_final.test.thresh'
     decoded = base+'train_predict_seq.'+str(i)+'.log'
     decoded_v = base+'valid_predict_seq.'+str(i)+'.log'
     if flag == 'si':

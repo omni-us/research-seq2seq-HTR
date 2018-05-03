@@ -1,16 +1,19 @@
-from main_torch import test
+from main_torch_latest import all_data_loader, test
 import argparse
-import os
+#import os
 
 parser = argparse.ArgumentParser(description='test')
 parser.add_argument('epoch', type=int, help='epoch that you want to evaluate')
 args = parser.parse_args()
 
-test(args.epoch)
-os.system('./test.sh '+str(args.epoch))
+_, _, test_loader = all_data_loader()
+test(test_loader, args.epoch, showAttn=False)
+#os.system('./test.sh '+str(args.epoch))
 
-#for i in range(135, 155):
+#for i in range(86, 87):
+#    os.system('rm pred_logs/test_predict_seq.'+str(i)+'.log')
 #    print('@@@', i, '@@@')
-#    test(i)
+#    _, _, test_loader = all_data_loader()
+#    test(test_loader, i)
 #    os.system('./test.sh '+str(i))
 #    print('<END>', i, '</END>')
