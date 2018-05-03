@@ -39,7 +39,7 @@ lr_gamma = 0.5
 START_TEST = 1e4 # 1e4: never run test 0: run test from beginning
 FREEZE = False
 freeze_milestone = [65, 90]
-EARLY_STOP_EPOCH = 100 # None: no early stopping
+EARLY_STOP_EPOCH = 30 # None: no early stopping
 HIDDEN_SIZE_ENC = 256
 HIDDEN_SIZE_DEC = 256 # model/encoder.py SUM_UP=False: enc:dec = 1:2  SUM_UP=True: enc:dec = 1:1
 CON_STEP = None # CON_STEP = 4 # encoder output squeeze step
