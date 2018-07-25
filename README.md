@@ -1,5 +1,4 @@
-# attentionMNISTseq2seq
-Use encoder-decoder with Bahdanau attention to predict MNIST digits sequence
+# An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
 
 ## Software environment:
 
