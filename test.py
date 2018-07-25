@@ -1,4 +1,4 @@
-from main_torch_latest import all_data_loader, test
+from main_torch_latest import all_data_loader, test, test_sample, test_sample_no_model
 import argparse
 #import os
 
@@ -7,7 +7,9 @@ parser.add_argument('epoch', type=int, help='epoch that you want to evaluate')
 args = parser.parse_args()
 
 _, _, test_loader = all_data_loader()
-test(test_loader, args.epoch, showAttn=False)
+#test(test_loader, args.epoch, showAttn=True)
+#test_sample(test_loader, args.epoch, showAttn=True)
+test_sample_no_model(test_loader, args.epoch, showAttn=True)
 #os.system('./test.sh '+str(args.epoch))
 
 #for i in range(86, 87):

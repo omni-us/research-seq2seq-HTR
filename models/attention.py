@@ -4,7 +4,7 @@ from torch.autograd import Variable
 
 #torch.cuda.set_device(1)
 
-ATTN_SMOOTH = True
+ATTN_SMOOTH = False
 K = 128 # the filters of location attention
 R = 7 # window size of the kernel
 

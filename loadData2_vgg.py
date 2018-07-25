@@ -8,7 +8,7 @@ import marcalAugmentor
 #import torch
 
 WORD_LEVEL = True
-
+VGG_NORMAL = True
 # train data: 46945
 # valid data: 6445
 # test data: 13752
@@ -30,7 +30,6 @@ IMG_HEIGHT = 64
 #global_filename = []
 #global_length = []
 def labelDictionary():
-    #labels = ['_', '3', 't', 'E', '"', '5', 'G', 'Y', 'H', 'B', '(', 'O', '?', '/', 'F', '9', 'v', 'J', 'T', "'", '1', 'Z', 's', 'r', 'U', 'I', 'o', ':', 'Q', 'q', 'R', 'm', 'A', 'k', ';', 'W', '-', 'y', '2', 'w', ')', 'P', '+', '8', 'M', 'i', '7', '!', 'C', ' ', '0', 'K', 'p', 'z', '*', 'x', 'j', '6', 'b', '#', '.', 'X', '&', 'l', 'h', 'd', 'n', 'V', 'a', 'S', 'N', 'e', 'c', 'g', 'u', '4', 'f', ',', 'L', 'D']
     labels = [' ', '!', '"', '#', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '?', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
     letter2index = {label: n for n, label in enumerate(labels)}
     index2letter = {v: k for k, v in letter2index.items()}
@@ -47,37 +46,13 @@ class IAM_words(D.Dataset):
         self.augmentation = augmentation
 
         self.transformer = marcalAugmentor.augmentor
-        ## image augmentation for training
-        #pipeline = Augmentor.Pipeline()
-        #pipeline.zoom(1.0, 0.75, 1.0)
-        #pipeline.rotate(1.0, 0.2, 0.2)
-        #pipeline.shear(1.0, 2, 2)
-        #pipeline.skew(1.0, 0.1)
-        ##pipeline.random_distortion(1.0, 3, 3, 3) #b04-081-02-12 64*4
-        ## if grid_width > 4, then it will occur ZeroDivisionError: float division by zero
-        #self.transform = transforms.Compose([
-        #                    transforms.ToPILImage(),
-        #                    pipeline.torch_transform(),
-        #                    #transforms.ToTensor(),
-        #                    ])
-        ##self.norm = RangeNormalize(0, 1)
 
     def __getitem__(self, index):
-        file_name = [] # as index
-        in_data = []
-        in_len = []
-        out_data = []
-        out_data_mask = []
-        sub_file_label = self.file_label[index]
-        for i in sub_file_label:
-            img, img_width = self.readImage_keepRatio(i[0], flip=FLIP)
-            label, label_mask = self.label_padding(' '.join(i[1:]), num_tokens)
-            file_name.append(i[0])
-            in_data.append(img)
-            in_len.append(img_width)
-            out_data.append(label)
-            out_data_mask.append(label_mask)
-        return {'index_sa': file_name, 'input_sa': in_data, 'output_sa': out_data, 'in_len_sa': in_len, 'out_len_sa': out_data_mask}
+        word = self.file_label[index]
+        img, img_width = self.readImage_keepRatio(word[0], flip=FLIP)
+        label, label_mask = self.label_padding(' '.join(word[1:]), num_tokens)
+        return word[0], img, img_width, label
+        #return {'index_sa': file_name, 'input_sa': in_data, 'output_sa': out_data, 'in_len_sa': in_len, 'out_len_sa': out_data_mask}
 
     def __len__(self):
         return len(self.file_label)
@@ -108,16 +83,6 @@ class IAM_words(D.Dataset):
                 img = cv2.resize(img_new, (int(img_new.shape[1]*rate)+1, IMG_HEIGHT), interpolation=cv2.INTER_CUBIC) # INTER_AREA con error
             else:
                 img = 255 - img
-            #if img_new.shape[0] == 0 or img_new.shape[1] == 0:
-            #    print(file_name, img_new.shape)
-            #    if RM_BACKGROUND:
-            #        img[img>thresh] = 255
-            #    img = 255 - img
-            #else:
-            #    img = img_new
-        #else: # evaluation
-            #if RM_BACKGROUND:
-            #    img[img>thresh] = 255
         else:
             img = 255 - img
 
@@ -135,39 +100,16 @@ class IAM_words(D.Dataset):
             outImg[:, :img_width] = img
         outImg = outImg/255. #float64
         outImg = outImg.astype('float32')
+        if VGG_NORMAL:
+            mean = [0.485, 0.456, 0.406]
+            std = [0.229, 0.224, 0.225]
+            outImgFinal = np.zeros([3, *outImg.shape])
+            for i in range(3):
+                outImgFinal[i] = (outImg - mean[i]) / std[i]
+            return outImgFinal, img_width
+
+        outImg = np.vstack([np.expand_dims(outImg, 0)] * 3) # GRAY->RGB
         return outImg, img_width
-
-    #def readImage(self, file_name, flip):
-    #    if RM_BACKGROUND:
-    #        file_name, thresh = file_name.split(',')
-    #        thresh = int(thresh)
-    #    url = baseDir + 'lines/' + file_name + '.png'
-    #    img = cv2.imread(url, 0)
-    #    size = img.shape[0] * img.shape[1]
-    #    if self.augmentation and size > 100: # augmentation for training data
-    #        img = self.transformer(img)
-    #    else: # evaluation
-    #        if RM_BACKGROUND:
-    #            img[img>thresh] = 255
-    #            img = 255 - img
-    #    img = img/255. #float64
-    #    img = img.astype('float32')
-    #    rate = float(IMG_HEIGHT) / img.shape[0]
-    #    img = cv2.resize(img, (int(img.shape[1]*rate), IMG_HEIGHT), interpolation=cv2.INTER_AREA)
-
-    #    img_width = img.shape[-1]
-
-    #    if flip:
-    #        img = np.flip(img, 1)
-
-    #    if img_width > IMG_WIDTH:
-    #        outImg = cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT), interpolation=cv2.INTER_AREA)
-    #        img_width = IMG_WIDTH
-    #    else:
-    #        outImg = np.zeros((IMG_HEIGHT, IMG_WIDTH), dtype='float32')
-    #        outImg[:, :img_width] = img
-
-    #    return outImg, img_width
 
     def label_padding(self, labels, num_tokens):
         new_label_len = []
@@ -227,36 +169,6 @@ def loadData():
     data_valid = IAM_words(file_label_va, augmentation=False)
     data_test = IAM_words(file_label_te, augmentation=False)
     return data_train, data_valid, data_test
-
-#def loadData_sample():
-#    with open(baseDir+'iam_word_gt_final.train', 'r') as f_tr:
-#        data_tr = f_tr.readlines()[:512]
-#        file_label_tr = [i[:-1].split(' ') for i in data_tr]
-#
-#    with open(baseDir+'iam_word_gt_final.valid', 'r') as f_va:
-#        data_va = f_va.readlines()[:128]
-#        file_label_va = [i[:-1].split(' ') for i in data_va]
-#
-#    with open(baseDir+'iam_word_gt_final.test', 'r') as f_te:
-#        data_te = f_te.readlines()[:256]
-#        file_label_te = [i[:-1].split(' ') for i in data_te]
-#
-#    total_num_tr = len(file_label_tr)
-#    total_num_va = len(file_label_va)
-#    total_num_te = len(file_label_te)
-#    print('Loading training data ', total_num_tr)
-#    print('Loading validation data ', total_num_va)
-#    print('Loading testing data ', total_num_te)
-#
-#    np.random.shuffle(file_label_tr)
-#    data_train = IAM_words(file_label_tr)
-#    data_valid = IAM_words(file_label_va)
-#    data_test = IAM_words(file_label_te)
-#    return data_train, data_valid, data_test
-
-#train_loader = D.DataLoader(data_train, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
-#valid_loader = D.DataLoader(data_valid, batch_size=BATCH_SIZE, pin_memory=True)
-#test_loader = D.DataLoader(data_test, batch_size=BATCH_SIZE, pin_memory=True)
 
 if __name__ == '__main__':
     import time

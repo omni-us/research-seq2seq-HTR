@@ -18,8 +18,8 @@ model_urls = {
     'vgg19': 'https://download.pytorch.org/models/vgg19-dcbb9e9d.pth',
     'vgg11_bn': 'https://download.pytorch.org/models/vgg11_bn-6002323d.pth',
     'vgg13_bn': 'https://download.pytorch.org/models/vgg13_bn-abd245e5.pth',
-    'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
-    #'vgg16_bn': './models/vgg16_bn-6c64b313.pth',
+    #'vgg16_bn': 'https://download.pytorch.org/models/vgg16_bn-6c64b313.pth',
+    'vgg16_bn': './models/vgg16_bn-6c64b313.pth',
     'vgg19_bn': 'https://download.pytorch.org/models/vgg19_bn-c79401a0.pth',
 }
 
@@ -56,7 +56,7 @@ class VGG(nn.Module):
 
 def make_layers(cfg, batch_norm=False):
     layers = []
-    in_channels = 1
+    in_channels = 3
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -75,7 +75,8 @@ cfg = {
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512],
     #'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
-    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    #'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512],
 }
 
 
@@ -159,10 +160,10 @@ def vgg16_bn(pretrained=False, **kwargs):
         kwargs['init_weights'] = False
         model = VGG(make_layers(cfg['D'], batch_norm=True), **kwargs)
         model_dict = model.state_dict()
-        total_dict = model_zoo.load_url(model_urls['vgg16_bn'])
-        #total_dict = torch.load(model_urls['vgg16_bn'])
+        #total_dict = model_zoo.load_url(model_urls['vgg16_bn'])
+        total_dict = torch.load(model_urls['vgg16_bn'])
         partial_dict = {k: v for k, v in total_dict.items() if k in model_dict}
-        partial_dict['features.0.weight'] = partial_dict['features.0.weight'].sum(dim=1, keepdim=True)
+        #partial_dict['features.0.weight'] = partial_dict['features.0.weight'].sum(dim=1, keepdim=True)
         model_dict.update(partial_dict)
         model.load_state_dict(partial_dict)
     else:
@@ -192,7 +193,13 @@ def vgg19_bn(pretrained=False, **kwargs):
     """
     if pretrained:
         kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['E'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg19_bn']))
+        model = VGG(make_layers(cfg['E'], batch_norm=True), **kwargs)
+        model_dict = model.state_dict()
+        total_dict = model_zoo.load_url(model_urls['vgg19_bn'])
+        #total_dict = torch.load(model_urls['vgg19_bn'])
+        partial_dict = {k: v for k, v in total_dict.items() if k in model_dict}
+        model_dict.update(partial_dict)
+        model.load_state_dict(partial_dict)
+    else:
+        model = VGG(make_layers(cfg['E'], batch_norm=True), **kwargs)
     return model

@@ -19,3 +19,10 @@ for i in preds:
         command = 'rm ' + i
         print(command)
         os.system(command)
+
+imgs = glob.glob('imgs/*.jpg')
+for i in imgs:
+    if int(i.split('/')[1].split('.')[0].split('_')[-1]) > args.epoch:
+        command = 'rm ' + i
+        print(command)
+        os.system(command)

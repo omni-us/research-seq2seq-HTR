@@ -11,6 +11,7 @@ args = parser.parse_args()
 epochs = args.epochs
 flag = args.flag
 #base = args.folder + '/'
+baseDir = '/home/lkang/datasets/iam_final_words/'
 base = 'pred_logs/'
 #if len(sys.argv) != 3:
 #    print('USAGE: python3 pytasas.py <epochs> <flag: with text or not, si: with, no: not>')
@@ -23,9 +24,9 @@ if flag == 'si':
     f_cer_t = open(base+'cer_test.log', 'w')
 
 for i in range(epochs):
-    gt_tr = 'RWTH.iam_word_gt_final.train.thresh'
-    gt_va = 'RWTH.iam_word_gt_final.valid.thresh'
-    gt_te = 'RWTH.iam_word_gt_final.test.thresh'
+    gt_tr = baseDir + 'RWTH.iam_word_gt_final.train.thresh'
+    gt_va = baseDir + 'RWTH.iam_word_gt_final.valid.thresh'
+    gt_te = baseDir + 'RWTH.iam_word_gt_final.test.thresh'
     decoded = base+'train_predict_seq.'+str(i)+'.log'
     decoded_v = base+'valid_predict_seq.'+str(i)+'.log'
     if flag == 'si':

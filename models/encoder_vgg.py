@@ -3,7 +3,8 @@ from torch.autograd import Variable
 import torch
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import numpy as np
-from models.vgg_tro import vgg16_bn
+#from models.vgg_tro_channel1 import vgg16_bn
+from models.vgg_tro_channel3 import vgg16_bn, vgg19_bn
 
 #torch.cuda.set_device(1)
 
@@ -24,7 +25,8 @@ class Encoder(nn.Module):
         self.n_layers = 2
         self.dropout = 0.5
 
-        self.layer = vgg16_bn(PRE_TRAIN_VGG)
+        #self.layer = vgg16_bn(PRE_TRAIN_VGG)
+        self.layer = vgg19_bn(PRE_TRAIN_VGG)
 
         if DROP_OUT:
             self.layer_dropout = nn.Dropout2d(p=0.5)

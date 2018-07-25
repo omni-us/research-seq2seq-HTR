@@ -4,7 +4,7 @@ import torch
 
 #torch.cuda.set_device(1)
 
-MULTINOMIAL = True
+MULTINOMIAL = False
 
 class Decoder(nn.Module):
     def __init__(self, hidden_size, embedding_size, vocab_size, attention, tradeoff_context_embed):

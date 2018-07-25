@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import cv2
-import loadData2_latest as loadData
+import loadData2_vgg as loadData
 
 HEIGHT = loadData.IMG_HEIGHT
 WIDTH = loadData.IMG_WIDTH
@@ -19,11 +19,14 @@ def visualizeAttn(img, first_img_real_len, attn, epoch, count_n, name):
     folder_name = 'imgs'
     if not os.path.exists(folder_name):
         os.makedirs(folder_name)
-    img *= 255./img.max()
     img = img[:, :first_img_real_len]
-    img = img.cpu().numpy().astype(np.uint8)
+    img = img.cpu().numpy()
+    img -= img.min()
+    img *= 255./img.max()
+    img = img.astype(np.uint8)
     weights = [img] # (80, 460)
-    for m in attn[:count_n+1]:
+    #for m in attn[:count_n+1]: # also show the last <EOS>
+    for m in attn[:count_n]:
         mask_img = np.vstack([m]*10) # (10, 55)
         mask_img *= 255./mask_img.max()
         mask_img = mask_img.astype(np.uint8)
