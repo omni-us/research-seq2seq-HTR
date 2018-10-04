@@ -173,7 +173,7 @@ def loadData():
 if __name__ == '__main__':
     import time
     start = time.time()
-    SHOW_IMG = True
+    SHOW_IMG = False
     if WORD_LEVEL:
         imgName = 'p03-080-05-02'
         subdic = 'words/'
@@ -196,22 +196,16 @@ if __name__ == '__main__':
 
     else:
         data_train, data_valid, data_test = loadData()
-        maxLen = max(data_train[:]['in_len_sa'])
-        num = data_train[:]['in_len_sa'].index(maxLen)
-        idx = data_train[:]['index_sa'][num]
-        print('[Train] Max length: ', maxLen, idx)
-
-        maxLen = max(data_valid[:]['in_len_sa'])
-        num = data_valid[:]['in_len_sa'].index(maxLen)
-        idx = data_valid[:]['index_sa'][num]
-        print('[Valid] Max length: ', maxLen, idx)
-
-        maxLen = max(data_test[:]['in_len_sa'])
-        num = data_test[:]['in_len_sa'].index(maxLen)
-        idx = data_test[:]['index_sa'][num]
-        print('[Test] Max length: ', maxLen, idx)
-        print('tiempo de uso: %.3f' % (time.time()-start))
-
-        #print(global_filename)
-        #print(global_length)
-
+        MAX_WIDTH = 500
+        for i in range(len(data_train)):
+            idx, img, width, label = data_train[i]
+            if width > MAX_WIDTH:
+                print('Width: ', width, 'Index:', idx)
+        for i in range(len(data_valid)):
+            idx, img, width, label = data_valid[i]
+            if width > MAX_WIDTH:
+                print('Width: ', width, 'Index:', idx)
+        for i in range(len(data_test)):
+            idx, img, width, label = data_test[i]
+            if width > MAX_WIDTH:
+                print('Width: ', width, 'Index:', idx)
