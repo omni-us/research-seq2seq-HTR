@@ -1,6 +1,7 @@
 import subprocess as sub
 #import sys
 import argparse
+import datasetConfig
 
 parser = argparse.ArgumentParser('Tasas for CER')
 parser.add_argument('epochs', type=int, help='how many epochs')
@@ -11,7 +12,7 @@ args = parser.parse_args()
 epochs = args.epochs
 flag = args.flag
 #base = args.folder + '/'
-baseDir = '/home/lkang/datasets/iam_final_words/'
+baseDir = datasetConfig.baseDir_word
 base = 'pred_logs/'
 #if len(sys.argv) != 3:
 #    print('USAGE: python3 pytasas.py <epochs> <flag: with text or not, si: with, no: not>')

@@ -18,7 +18,7 @@ Figure 1. Architecture of Seq2Seq model with attention mechanism.
 
 1. Download the [IAM datasets](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database) into <your_folder>, copy all the word-level images into folder <your_folder>/words/, and then copy the groundtruth files from RWTH_partition/ to <your_folder>. You can also find the original RWTH Aachen partition [here](https://github.com/jpuigcerver/Laia/tree/master/egs/iam/data/part/lines/aachen), which is in line-level.
 
-2. Open file loadData2_vgg.py and change the row 22 to <your_folder>. Our experiments are all working on word-level IAM dataset, so you can just ignore the row 26. But if you are interested in line-level experiments, you are welcome to have it a try:-)
+2. Open file datasetConfig.py and replace the dataset location in the first row with <your_folder>. Remember to put a "/" to the end of <your_folder>. It's not guaranteed that the model can work fine with the line-level dataset, but if you are interested, you are welcome to have it a try:-)
 
 ### Training process:
 
@@ -33,11 +33,9 @@ Just type ./run_test.sh <epoch> in your terminal, and you can get the result soo
 
 ### Calculating the CER and WER:
 
-1. Open file pytasas_words.py and change row 14 to <your_folder>. 
+1. Run python3.5 pytasas_words.py <final_epoch> <flag>, and it will calculate all the CERs from first epoch to <final_epoch>. If you set <flag> "si", the test CER will also be calculated, while if the <flag> is "no", only the training CER and validation CER can be obtained. E.g. "python3.5 62 si".
 
-2. Run python3.5 pytasas_words.py <final_epoch> <flag>, and it will calculate all the CERs from first epoch to <final_epoch>. If you set <flag> "si", the test CER will also be calculated, while if the <flag> is "no", only the training CER and validation CER can be obtained. E.g. "python3.5 62 si".
-
-3. When calculating the WER, you need to do the step 1 and 2 again, but it is the file pytasas_words_wer.py.
+2. When calculating the WER, you need to do the step 1 and 2 again, but it is the file pytasas_words_wer.py.
 
 ## Results:
 

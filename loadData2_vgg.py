@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 #from torchvision import transforms
 import marcalAugmentor
+import datasetConfig
 #import Augmentor
 #from torchsample.transforms import RangeNormalize
 #import torch
@@ -19,11 +20,11 @@ FLIP = False # flip the image
 if WORD_LEVEL:
     OUTPUT_MAX_LEN = 23 # max-word length is 21  This value should be larger than 21+2 (<GO>+groundtruth+<END>)
     IMG_WIDTH = 1011 # m01-084-07-00 max_length
-    baseDir = '/home/lkang/datasets/iam_final_words/'
+    baseDir = datasetConfig.baseDir_word
 else:
     OUTPUT_MAX_LEN = 95 # line-level
     IMG_WIDTH = 2227 # m03-118-05.png max_length
-    baseDir = '/home/lkang/datasets/iam_final_lines/'
+    baseDir = datasetConfig.baseDir_line
 IMG_HEIGHT = 64
 #IMG_WIDTH = 256 # img_width < 256: padding   img_width > 256: resize to 256
 
