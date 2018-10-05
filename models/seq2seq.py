@@ -3,7 +3,7 @@ from torch import nn
 from torch.autograd import Variable
 import random
 
-print_shape_flag = True
+print_shape_flag = False
 
 class Seq2Seq(nn.Module):
     def __init__(self, encoder, decoder, output_max_len, vocab_size):

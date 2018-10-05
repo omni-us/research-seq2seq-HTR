@@ -16,7 +16,32 @@ Figure 1. Architecture of Seq2Seq model with attention mechanism.
 
 ### Dataset preparation:
 
-1. Download the [IAM datasets](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database) into <your_folder>, copy all the word-level images into folder <your_folder>/words/, and then copy the groundtruth files from RWTH_partition/ to <your_folder>. You can also find the original RWTH Aachen partition [here](https://github.com/jpuigcerver/Laia/tree/master/egs/iam/data/part/lines/aachen), which is in line-level.
+1. Download the [IAM datasets](http://www.fki.inf.unibe.ch/databases/iam-handwriting-database) into <your_folder>, copy all the word-level images into folder <your_folder>/words/, remember to make sure that in the words/ directory, there should be no subdirectory structure. And then copy the groundtruth files from RWTH_partition/ to <your_folder>. You can also find the original RWTH Aachen partition [here](https://github.com/jpuigcerver/Laia/tree/master/egs/iam/data/part/lines/aachen), which is in line-level.
+
+e.g. In <your_folder>:
+
+- words/
+
+- RWTH.iam_word_gt_final.train.thresh
+
+- RWTH.iam_word_gt_final.valid.thresh
+
+- RWTH.iam_word_gt_final.test.thresh
+
+In <your_folder>/words/:
+
+- c04-028-05-07.png
+
+- g06-011f-06-12.png  
+
+- l01-023-03-03.png   
+
+- r06-143-03-10.png
+
+- c04-028-05-08.png
+
+- etc.
+
 
 2. Open file datasetConfig.py and replace the dataset location in the first row with <your_folder>. Remember to put a "/" to the end of <your_folder>. It's not guaranteed that the model can work fine with the line-level dataset, but if you are interested, you are welcome to have it a try:-)
 
