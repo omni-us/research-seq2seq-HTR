@@ -1,4 +1,5 @@
-# Convolve, Attend and Spell: An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
+# Convolve, Attend and Spell: \\
+# An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
 
 ## Paper:
 
