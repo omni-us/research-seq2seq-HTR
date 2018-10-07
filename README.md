@@ -1,4 +1,10 @@
-# An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
+# Convolve, Attend and Spell: An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
+
+## Paper:
+
+[Convolve, Attend and Spell: An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
+L. Kang, J.I. Toledo, P. Riba, M. Villegas, A. Fornés and M. Rusiñol.
+To appear in Proceedings of the German Conference on Pattern Recognition, GCPR18 2018.](http://www.cvc.uab.es/~marcal/pdfs/GCPR18.pdf)
 
 ## Software environment:
 
