@@ -1,5 +1,4 @@
-# Convolve, Attend and Spell: \\
-# An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
+# Convolve, Attend and Spell: An Attention-based Sequence-to-Sequence Model for Handwritten Word Recognition.
 
 ## Paper:
 
@@ -77,4 +76,6 @@ Figure 2. Training curves and some attention samples for test set.
 
 The scripts to generate this result can be found in folder others/.
 
-## References:
+## Troubleshooting:
+
+If an out of memory error occurs, you could change a smaller batch size and retrain it. The BATCH_SIZE can be modified in main_torch_latest.py. 
