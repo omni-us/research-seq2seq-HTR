@@ -8,8 +8,8 @@ To appear in Proceedings of the German Conference on Pattern Recognition, GCPR18
 
 ## Software environment:
 
-- Ubuntu 16.04 x64
-- Python 3.5
+- Ubuntu 16.04 / 18.04
+- Python 3.5 / 3.6
 - PyTorch 0.3
 
 ## Architecture:
@@ -64,7 +64,7 @@ Just type ./run_test.sh <epoch> in your terminal, and you can get the result soo
 
 ### Calculating the CER and WER:
 
-1. Run python3.5 pytasas_words.py <final_epoch> <flag>, and it will calculate all the CERs from first epoch to <final_epoch>. If you set <flag> "si", the test CER will also be calculated, while if the <flag> is "no", only the training CER and validation CER can be obtained. E.g. "python3.5 62 si".
+1. Run python3 pytasas_words.py <final_epoch> <flag>, and it will calculate all the CERs from first epoch to <final_epoch>. If you set <flag> "si", the test CER will also be calculated, while if the <flag> is "no", only the training CER and validation CER can be obtained. E.g. "python3 pytasas_words.py 62 si".
 
 2. When calculating the WER, you need to do the step 1 and 2 again, but it is the file pytasas_words_wer.py.
 
