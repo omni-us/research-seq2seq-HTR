@@ -7,6 +7,7 @@
 ## @version $Version: 2016-09-27$
 ## @author Mauricio Villegas <mauricio_ville@yahoo.com>
 ## @link https://github.com/mauvilsa/run_parallel
+## @license MIT License
 ##
 
 ##

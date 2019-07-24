@@ -3,9 +3,34 @@
 ##
 ## Collection of shell functions for Handwritten Text Recognition.
 ##
-## @version $Revision: 160 $$Date:: 2017-05-16 #$
-## @author Mauricio Villegas <mauvilsa@upv.es>
-## @copyright Copyright(c) 2014-present, Mauricio Villegas <mauvilsa@upv.es>
+## @version $Version: 2019.07.24$
+## @author Mauricio Villegas <mauricio_ville@yahoo.com>
+## @copyright Copyright(c) 2014-present, Mauricio Villegas <mauricio_ville@yahoo.com>
+## @license MIT License
+##
+
+##
+## The MIT License (MIT)
+##
+## Copyright (c) 2015-present, Mauricio Villegas <mauricio_ville@yahoo.com>
+##
+## Permission is hereby granted, free of charge, to any person obtaining a copy
+## of this software and associated documentation files (the "Software"), to deal
+## in the Software without restriction, including without limitation the rights
+## to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+## copies of the Software, and to permit persons to whom the Software is
+## furnished to do so, subject to the following conditions:
+##
+## The above copyright notice and this permission notice shall be included in all
+## copies or substantial portions of the Software.
+##
+## THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+## IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+## FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+## AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+## LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+## OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+## SOFTWARE.
 ##
 
 [ "${BASH_SOURCE[0]}" = "$0" ] &&
@@ -15,10 +40,14 @@
   echo "htrsh.inc.sh: warning: library already loaded, to reload first use htrsh_unload" 1>&2 &&
   return 1;
 
-[ "$(which run_parallel.inc.sh)" = "" ] &&
-  echo "htrsh.inc.sh: error: required run_parallel.inc.sh not found in path" 1>&2 &&
-  return 1;
-. run_parallel.inc.sh;
+run_parallel_path="${BASH_SOURCE%/*}/run_parallel.inc.sh";
+if [ ! -e "$run_parallel_path" ]; then
+  [ "$(which run_parallel.inc.sh)" = "" ] &&
+    echo "htrsh.inc.sh: error: required run_parallel.inc.sh not found in same directory as htrsh.inc.sh or in path" 1>&2 &&
+    return 1;
+  run_parallel_path=$(which run_parallel.inc.sh);
+fi
+. "$run_parallel_path";
 
 #-----------------------#
 # Default configuration #
@@ -90,6 +119,8 @@ ENDWORD        = "</s>"
 ';
 
 htrsh_symb_space="{space}";
+htrsh_symb_eps="{eps}";
+htrsh_symb_blank="{blank}";
 
 htrsh_special_chars=$'
 <gap/> {gap}
@@ -124,9 +155,9 @@ htrsh_sed_translit_vowels='
   ';
 
 htrsh_valschema="yes";
-htrsh_pagexsd="/usr/local/bin/pagecontent_prhlt.xsd";
-( [ "${USER+$USER}" = "mvillegas" ] || [ "${USER+$USER}" = "mauvilsa" ] ) &&
-  htrsh_pagexsd="$HOME/work/prog/mvsh/HTR/xsd/pagecontent_prhlt.xsd";
+htrsh_pagexsd=$(readlink -f "$(which htrsh.inc.sh)" | sed 's|/htrsh.inc.sh$|/pagecontent_searchink.xsd|');
+[ ! -e "$htrsh_pagexsd" ] &&
+  htrsh_pagexsd="https://www.prhlt.upv.es/~mvillegas/xsd/pagecontent_prhlt.xsd";
 
 htrsh_realpath="readlink -f";
 [ $(realpath --help 2>&1 | grep relative | wc -l) != 0 ] &&
@@ -142,8 +173,8 @@ htrsh_infovars="XMLDIR IMDIR IMFILE XMLBASE IMBASE IMEXT IMSIZE IMRES RESSRC";
 ## Function that prints the version of the library
 ##
 htrsh_version () {
-  echo '$Revision: 160 $$Date: 2017-05-16 16:21:06 +0200 (Tue, 16 May 2017) $' \
-    | sed 's|^$Revision:|htrsh: revision|; s| (.*|)|; s|[$][$]Date: |(|;' 1>&2;
+  echo '$Version: 2019.07.24$' \
+    | sed -r 's|^\$Version[:] ([^$]+)\$|htrsh \1|' 1>&2;
 }
 
 ##
@@ -242,6 +273,78 @@ htrsh_pagexml_create () {
 }
 
 ##
+## Function that creates an empty Page file for a given image
+##
+htrsh_pagexml_createmulti () {
+  local FN="htrsh_pagexml_createmulti";
+  if [ $# -lt 1 ]; then
+    { echo "$FN: Error: Not enough input arguments";
+      echo "Description: Creates an empty Page XML file for given images";
+      echo "Usage: $FN IMAGE1 [IMAGE2 ...]";
+    } 1>&2;
+    return 1;
+  fi
+
+  ### Parse input arguments ###
+  local DATE=$( date -u "+%Y-%m-%dT%H:%M:%S" );
+
+  local IMG="$1";
+  local SIZES=( $( identify -format "%wx%h\n" "$@" ) );
+
+  if [ "${#SIZES[@]}" != "$#" ]; then
+    echo "$FN: error: unable to determine size of an image" 1>&2;
+    return 1;
+  fi
+
+  echo '<?xml version="1.0" encoding="utf-8"?>';
+  echo '<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15">';
+  echo "  <Metadata>";
+  echo "    <Creator>htrsh_pagexml_create</Creator>";
+  echo "    <Created>$DATE</Created>";
+  echo "    <LastChange>$DATE</LastChange>";
+  echo "  </Metadata>";
+  local n=0;
+  while [ $# -gt 0 ]; do
+    local SIZE=( ${SIZES[$n]/x/ } );
+    echo "  <Page imageFilename=\"$1\" imageHeight=\"${SIZE[1]}\" imageWidth=\"${SIZE[0]}\"/>";
+    n=$((n+1));
+    shift;
+  done
+  echo "</PcGts>";
+}
+
+##
+## Function that adds a region that covers the whole page area
+##
+htrsh_pagexml_addpagereg () {
+  local FN="htrsh_pagexml_addpagereg";
+  if [ $# -lt 1 ]; then
+    { echo "$FN: Error: Not enough input arguments";
+      echo "Description: Adds a region that covers the whole page area";
+      echo "Usage: $FN XML";
+    } 1>&2;
+    return 1;
+  fi
+
+  ### Parse input arguments ###
+  local XML="$1";
+
+  local xmledit=( xmlstarlet ed );
+
+  for n in $(seq 1 $(xmlstarlet sel -t -v 'count(//_:Page)' "$1")); do
+    local X=$(($(xmlstarlet sel -t -v "(//_:Page)[$n]/@imageWidth" "$1")-1));
+    local Y=$(($(xmlstarlet sel -t -v "(//_:Page)[$n]/@imageHeight" "$1")-1));
+    xmledit+=( -s "//_:Page[$n]" -t elem -n TMPNODE );
+    xmledit+=( -i //TMPNODE -t attr -n id -v "page$n" );
+    xmledit+=( -s //TMPNODE -t elem -n Coords );
+    xmledit+=( -i //TMPNODE/Coords -t attr -n points -v "0,0 $X,0 $X,$Y 0,$Y" );
+    xmledit+=( -r //TMPNODE -v TextRegion );
+  done
+
+  "${xmledit[@]}" "$XML";
+}
+
+##
 ## Function that creates a region for the whole page, moves all text lines to it and removes all other regions
 ##
 htrsh_pagexml_to_single_region () {
@@ -275,20 +378,83 @@ htrsh_pagexml_to_single_region () {
 }
 
 ##
-## Function that sets TextEquiv/Unicode in a Page XML
+## Function that applies a sed script on TextEquiv/Unicode nodes in a Page XML
 ##
-# @todo Also allow to stdout?
-htrsh_pagexml_set_textequiv () {
-  local FN="htrsh_pagexml_set_textequiv";
-  if [ $# -lt 3 ]; then
+htrsh_pagexml_sed_textequiv () {
+  local FN="htrsh_pagexml_sed_textequiv";
+  local XPATH="//*[$htrsh_xpath_textequiv]";
+  local SEDOP="-r";
+  if [ $# -lt 2 ]; then
     { echo "$FN: Error: Not enough input arguments";
-      echo "Description: Sets TextEquiv/Unicode in an XML Page";
-      echo "Usage: $FN XML ID TEXT [ ID2 TEXT2 ... ]";
+      echo "Description: Applies a sed script on TextEquiv/Unicode nodes in a Page XML";
+      echo "Usage: $FN XML SCRIPT [ Options ]";
+      echo "Options:";
+      echo " -x XPATH    Selector of elements for processing (def.=$XPATH)";
+      echo " -o SEDOPS   Options for sed (def.=$SEDOP)";
     } 1>&2;
     return 1;
   fi
 
   ### Parse input arguments ###
+  local XML="$1";
+  local SED="$2";
+  shift 2;
+  while [ $# -gt 0 ]; do
+    if [ "$1" = "-x" ]; then
+      XPATH="$2";
+    elif [ "$1" = "-o" ]; then
+      SEDOP="$2";
+    else
+      echo "$FN: error: unexpected input argument: $1" 1>&2;
+      return 1;
+    fi
+    shift 2;
+  done
+
+  ### Apply sed script to selection of TextEquivs ###
+  local updatetext=();
+  for tid in $( xmlstarlet sel -t -m "$XPATH" -o " " -v @id "$XML" ); do
+    local text1=$( xmlstarlet sel -T -B -E utf-8 -t -v "//*[@id='$tid']/_:TextEquiv/_:Unicode" "$XML" );
+    local text2=$( printf "%s" "$text1" | sed $SEDOP "$SED" );
+    [ "$text2" != "" ] && [ "$text2" != "$text1" ] &&
+      updatetext+=( "$tid" "$text2" );
+  done
+  if [ "${#updatetext[@]}" -gt 0 ]; then
+    htrsh_pagexml_set_textequiv "$XML" "${updatetext[@]}";
+  else
+    cat "$XML";
+  fi
+}
+
+
+##
+## Function that sets TextEquiv/Unicode in a Page XML
+##
+htrsh_pagexml_set_textequiv () {
+  local FN="htrsh_pagexml_set_textequiv";
+  local INPLACE="";
+  local CONF="no";
+  if [ $# -lt 3 ]; then
+    { echo "$FN: Error: Not enough input arguments";
+      echo "Description: Sets TextEquiv/Unicode in an XML Page";
+      echo "Usage: $FN [--inplace --conf] XML ID TEXT [CONF] [ ID2 TEXT2 [CONF2] ... ]";
+    } 1>&2;
+    return 1;
+  fi
+
+  ### Parse input arguments ###
+  while [ "${1:0:2}" = "--" ]; do
+    if [ "$1" = "--inplace" ]; then
+      INPLACE="$1";
+    elif [ "$1" = "--conf" ]; then
+      CONF="yes";
+    else
+      echo "$FN: error: unexpected input argument: $1" 1>&2;
+      return 1;
+    fi
+    shift;
+  done
+
   local XML="$1";
   shift;
 
@@ -299,7 +465,7 @@ htrsh_pagexml_set_textequiv () {
 
   local ids=();
   local idmatch=( xmlstarlet sel -t );
-  local xmledit=( xmlstarlet ed --inplace );
+  local xmledit=( xmlstarlet ed $INPLACE );
 
   while [ $# -gt 0 ]; do
     local text=$( echo "$2" | sed 's|&|\&amp;|g; s|<|\&lt;|g; s|>|\&gt;|g;' );
@@ -308,6 +474,10 @@ htrsh_pagexml_set_textequiv () {
     xmledit+=( -d "//*[@id='$1']/_:TextEquiv" );
     xmledit+=( -s "//*[@id='$1']" -t elem -n TMPNODE );
     xmledit+=( -s //TMPNODE -t elem -n Unicode -v "$text" );
+    if [ "$CONF" = "yes" ]; then
+      xmledit+=( -i //TMPNODE -t attr -n conf -v "$3" );
+      shift;
+    fi
     xmledit+=( -r //TMPNODE -v TextEquiv );
     shift 2;
   done
@@ -350,15 +520,15 @@ htrsh_pagexml_textequiv_lines2region () {
     shift 2;
   done
 
-  local TEXT=$( htrsh_pagexml_textequiv "$XML" -s lines -f tab \
-    | sed -r 's|^[^ ]+*\.([^. ]+)\.[^. ]+ |\1 |' );
+  local TEXT=$( htrsh_pagexml_textequiv "$XML" -s region-lines -f tab \
+    | sed -r 's|^[^ ]+*\.([^. ]+) |\1 |' );
 
   local updatetext=();
   for regid in $( echo "$TEXT" | sed 's| .*||' | sort -u ); do
     local text=$( echo "$TEXT" | sed -n "/^$regid /{ s|^[^ ]* ||; p; }" | "$FILTER" );
     updatetext+=( "$regid" "$text" );
   done
-  htrsh_pagexml_set_textequiv "$XML" "${updatetext[@]}";
+  htrsh_pagexml_set_textequiv --inplace "$XML" "${updatetext[@]}";
 }
 
 ##
@@ -375,7 +545,7 @@ htrsh_pagexml_textequiv_words2line () {
   fi
 
   local XML="$1";
-  local TEXT=$( htrsh_pagexml_textequiv "$XML" -s words -f tab \
+  local TEXT=$( htrsh_pagexml_textequiv "$XML" -s line-words -f tab \
     | sed 's|^[^ ]*\.\([^. ]*\) |\1 |' );
 
   local updatetext=();
@@ -383,7 +553,7 @@ htrsh_pagexml_textequiv_words2line () {
     local text=$( echo "$TEXT" | sed -n "/^$lineid /{ s|^[^ ]* ||; p; }" );
     updatetext+=( "$lineid" "$text" );
   done
-  htrsh_pagexml_set_textequiv "$XML" "${updatetext[@]}";
+  htrsh_pagexml_set_textequiv --inplace "$XML" "${updatetext[@]}";
 }
 
 ##
@@ -420,10 +590,12 @@ htrsh_pagexml_textequiv () {
   local SRC="lines";
   local FORMAT="raw";
   local FILTER="cat";
+  local BASEXPATH="";
   local ESPACES="yes";
   local WSPACE="no";
   local WORDEND="no";
   local PRTHEAD="no";
+  local PREPRINT="";
   if [ $# -lt 1 ]; then
     { echo "$FN: Error: Not enough input arguments";
       echo "Description: Prints to stdout the TextEquiv from an XML Page file";
@@ -432,10 +604,12 @@ htrsh_pagexml_textequiv () {
       echo " -s SOURCE    Source of TextEquiv, either 'regions', 'lines' or 'words' (def.=$SRC)";
       echo " -f FORMAT    Output format among 'raw', 'mlf-chars', 'mlf-words', 'tab' and 'tab-chars' (def.=$FORMAT)";
       echo " -F FILTER    Filtering pipe command, e.g. tokenizer, transliteration, etc. (def.=none)";
+      echo " -B XBASE     xpath to get the sample base name (def.=use the image basename)";
       echo " -E (yes|no)  For *-chars, whether to add spaces at start and end (def.=$ESPACES)";
       echo " -W (yes|no)  For mlf-words, whether to add start space (def.=$WSPACE)";
       echo " -w (yes|no)  For mlf-chars, whether to add word end marks (def.=$WORDEND)";
       echo " -H (yes|no)  Whether to print header (def.=$PRTHEAD)";
+      echo " -p ARRAY     Pre-print xmlstarlet arguments array name (def.=$PREPRINT)";
     } 1>&2;
     return 1;
   fi
@@ -456,6 +630,8 @@ htrsh_pagexml_textequiv () {
       fi
     elif [ "$1" = "-F" ] || [ "$1" = "-D" ]; then
       FILTER="$2";
+    elif [ "$1" = "-B" ]; then
+      BASEXPATH="$2";
     elif [ "$1" = "-E" ]; then
       ESPACES="$2";
     elif [ "$1" = "-W" ]; then
@@ -464,6 +640,11 @@ htrsh_pagexml_textequiv () {
       WORDEND="$2";
     elif [ "$1" = "-H" ]; then
       PRTHEAD="$2";
+    elif [ "$1" = "-p" ]; then
+      [ "$2" = "PREPRINT" ] &&
+        echo "$FN: error: pre print array cannot be called PREPRINT" 1>&2 &&
+        return 1;
+      PREPRINT="$2";
     else
       echo "$FN: error: unexpected input argument: $1" 1>&2;
       return 1;
@@ -475,18 +656,31 @@ htrsh_pagexml_textequiv () {
   htrsh_pageimg_info "$XML" noinfo;
   [ "$?" != 0 ] && return 1;
 
-  local PG=$(xmlstarlet sel -t -v //@imageFilename "$XML" \
-               | sed 's|.*/||; s|\.[^.]*$||; s|[\[ ()]|_|g; s|]|_|g;');
-
+  local idxmledit;
+  local IDop;
+  if [ "$BASEXPATH" != "" ]; then
+    idxmledit=( cat "$XML" );
+    IDop=( -v "$BASEXPATH" -o . );
+  else
+    idxmledit=( xmlstarlet ed 
+                $(xmlstarlet sel -t -v //@imageFilename -n "$XML" \
+                    | sed 's|.*/||; s|\.[^.]*$||; s|[\[ ()]|_|g; s|]|_|g;' \
+                    | awk '{printf(" -u (//@imageFilename)[%d] -v %s",NR,$0);}' )
+                "$XML" );
+    IDop=( -v ancestor::_:Page/@imageFilename -o . );
+  fi
   local XPATH;
-  local IDop=( -o "$PG." );
   local PRINT=( -v . -n );
+  [ "$PREPRINT" != "" ] &&
+    eval "PRINT=( \"\${${PREPRINT}[@]}\" \"\${PRINT[@]}\" )";
   if [ "$SRC" = "regions" ]; then
     XPATH="$htrsh_xpath_regions/$htrsh_xpath_textequiv";
     IDop+=( -v ../../@id );
-  elif [ "$SRC" = "words" ]; then
+  elif [ "$SRC" = "line-words" ]; then
     XPATH="$htrsh_xpath_regions/$htrsh_xpath_lines[$htrsh_xpath_words/$htrsh_xpath_textequiv]";
     PRINT=( -m "$htrsh_xpath_words/$htrsh_xpath_textequiv" -o " " -v . -b -n );
+    [ "$PREPRINT" != "" ] &&
+      eval "PRINT=( -m \"\$htrsh_xpath_words/\$htrsh_xpath_textequiv\" \"\${${PREPRINT}[@]}\" -v . -b -n )";
     [ "$htrsh_extended_names" = "true" ] && IDop+=( -v ../@id -o . -v @id );
     [ "$htrsh_extended_names" != "true" ] && IDop+=( -v @id );
   elif [ "$SRC" = "solo-words" ]; then
@@ -497,6 +691,11 @@ htrsh_pagexml_textequiv () {
     XPATH="$htrsh_xpath_regions/$htrsh_xpath_lines/$htrsh_xpath_textequiv";
     [ "$htrsh_extended_names" = "true" ] && IDop+=( -v ../../../@id -o . -v ../../@id );
     [ "$htrsh_extended_names" != "true" ] && IDop+=( -v ../../@id );
+  elif [ "$SRC" = "region-lines" ]; then
+    XPATH="$htrsh_xpath_regions[$htrsh_xpath_lines/$htrsh_xpath_textequiv]";
+    PRINT=( -m "$htrsh_xpath_lines/$htrsh_xpath_textequiv" -o " " -v . -b -n );
+    [ "$htrsh_extended_names" = "true" ] && IDop+=( -v ../@id -o . -v @id );
+    [ "$htrsh_extended_names" != "true" ] && IDop+=( -v @id );
   elif [ "$SRC" = "all" ]; then
     XPATH="//$htrsh_xpath_textequiv";
     IDop+=( -v ../../@id );
@@ -506,14 +705,15 @@ htrsh_pagexml_textequiv () {
   fi
 
   [ $(xmlstarlet sel -t -v "count($XPATH)" "$XML") = 0 ] &&
-    echo "$FN: error: zero matches for xpath $XPATH on file: $XML" 1>&2 &&
-    return 1;
+    echo "$FN: warning: zero matches for xpath $XPATH on file: $XML" 1>&2 &&
+    return 0;
 
   [ "$PRTHEAD" = "yes" ] && [ "${FORMAT:0:3}" = "mlf" ] &&
     echo '#!MLF!#';
 
   paste \
-      <( xmlstarlet sel -t -m "$XPATH" "${IDop[@]}" -n "$XML" ) \
+      <( "${idxmledit[@]}" \
+           | xmlstarlet sel -t -m "$XPATH" "${IDop[@]}" -n - ) \
       <( cat "$XML" \
            | tr '\t\n' '  ' \
            | xmlstarlet sel -T -B -E utf-8 -t -m "$XPATH" "${PRINT[@]}" \
@@ -618,7 +818,7 @@ htrsh_pagexml_textequiv_filter () {
     text=$( echo "$text" | sed 's|^[^ ]* ||' | "$FILTER" );
     updatetext+=( "$tid" "$text" );
   done
-  htrsh_pagexml_set_textequiv "$XML" "${updatetext[@]}";
+  htrsh_pagexml_set_textequiv --inplace "$XML" "${updatetext[@]}";
 }
 
 ##
@@ -626,14 +826,16 @@ htrsh_pagexml_textequiv_filter () {
 ##
 htrsh_text_to_chars () {
   local FN="htrsh_text_to_chars";
-  local FILTER="";
+  local FORMAT="txt";
+  local FILTER="cat";
   local ESPACES="yes";
   local WORDEND="no";
-  if [ $# -lt 2 ]; then
+  if [ $# -lt 1 ]; then
     { echo "$FN: Error: Not enough input arguments";
       echo "Description: Transforms plain text to character sequences";
       echo "Usage: $FN TEXTFILE [ Options ]";
       echo "Options:";
+      echo " -f FORMAT    Input format among 'txt' and 'tab' (def.=$FORMAT)";
       echo " -F FILTER    Filtering pipe command, e.g. tokenizer, transliteration, etc. (def.=none)";
       echo " -E (yes|no)  For *-chars, whether to add spaces at start and end (def.=$ESPACES)";
     } 1>&2;
@@ -644,7 +846,9 @@ htrsh_text_to_chars () {
   local TEXT="$1"; [ "$TEXT" = "-" ] && TEXT="/dev/stdin";
   shift;
   while [ $# -gt 0 ]; do
-    if [ "$1" = "-F" ]; then
+    if [ "$1" = "-f" ]; then
+      FORMAT="$2";
+    elif [ "$1" = "-F" ]; then
       FILTER="$2";
     elif [ "$1" = "-E" ]; then
       ESPACES="$2";
@@ -656,10 +860,10 @@ htrsh_text_to_chars () {
   done
 
   ### Process text ###
-  local AWK=(
-    gawk -v hmmtype="$htrsh_hmm_type"
-         -v ESPACES="$ESPACES" -v WORDEND="$WORDEND"
-         -v SPACE="$htrsh_symb_space" -v SPECIAL=<( echo "$htrsh_special_chars" )
+  text_to_chars () {
+    gawk -v hmmtype="$htrsh_hmm_type" \
+         -v ESPACES="$ESPACES" -v WORDEND="$WORDEND" \
+         -v SPACE="$htrsh_symb_space" -v SPECIAL=<( echo "$htrsh_special_chars" ) \
       "$htrsh_gawk_func_word_to_chars"'
       BEGIN {
         load_special_chars( SPECIAL );
@@ -682,12 +886,104 @@ htrsh_text_to_chars () {
             printf(" %s",SPACE);
         }
         printf("\n");
-      }' );
-  if [ "$FILTER" = "" ]; then
-    "${AWK[@]}" "$TEXT";
+      }' "$@";
+  }
+  if [ "$FORMAT" = "tab" ]; then
+    local TMP_TEXT=$(mktemp).txt;
+    cat "$TEXT" > "$TMP_TEXT";
+    paste -d " " \
+      <( awk '{print $1}' "$TMP_TEXT" ) \
+      <( sed 's|^[^ ]* *||' "$TMP_TEXT" | "$FILTER" | text_to_chars )
+    rm "$TMP_TEXT";
   else
-    "$FILTER" < "$TEXT" | "${AWK[@]}";
+    "$FILTER" < "$TEXT" | text_to_chars;
   fi
+}
+
+##
+## Function that generates a kaldi table of symbols for some given text
+##
+htrsh_text_get_symbol_tab () {
+  local FN="htrsh_text_get_symbol_tab";
+  local COUNT_FILE="cat";
+  local FORMAT="text";
+  if [ $# -lt 1 ]; then
+    { echo "$FN: Error: Not enough input arguments";
+      echo "Description: Generates a kaldi table of symbols for some given text";
+      echo "Usage: $FN TRANSCIPT_TAB [ Options ]";
+      echo "Options:";
+      echo " -f FORMAT       Input format tab or text (def.=$FORMAT)";
+      echo " -c COUNT_FILE   Save counts of symbols to given file (def.=false)";
+    } 1>&2;
+    return 1;
+  fi
+
+  ### Parse input arguments ###
+  local TEXT="$1"; [ "$TEXT" = "-" ] && TEXT="/dev/stdin";
+  shift;
+  while [ $# -gt 0 ]; do
+    if [ "$1" = "-c" ]; then
+      COUNT_FILE="$2";
+    elif [ "$1" = "-f" ]; then
+      FORMAT="$2";
+    else
+      echo "$FN: error: unexpected input argument: $1" 1>&2;
+      return 1;
+    fi
+    shift 2;
+  done
+
+  [ "$COUNT_FILE" != "cat" ] && COUNT_FILE=( tee "$COUNT_FILE" );
+
+  local n0="1"; [ "$FORMAT" = "tab" ] && n0="2";
+
+  awk -v n0=$n0 '
+      { for(n=n0;n<=NF;n++) char[$n]++; }
+      END {
+        for(c in char)
+          printf("%d %s\n",char[c],c);
+      }' "$TEXT" \
+    | sort -k 1rn,1 \
+    | "${COUNT_FILE[@]}" \
+    | awk -v EPS="$htrsh_symb_eps" -v BLANK="$htrsh_symb_blank" -v N=1 '
+        BEGIN {
+          printf("%s 0\n",EPS);
+          printf("%s 1\n",BLANK);
+        }
+        { if( !($NF in char) )
+            printf("%s %d\n",$NF,++N);
+          char[$NF]="";
+        }';
+}
+
+##
+## Function that concatenates symbols from consecutive samples having the same ID
+##
+htrsh_tab_concat () {
+  local FN="htrsh_tab_concat";
+  if [ $# -gt 0 ]; then
+    { echo "$FN: Error: Incorrect number of input arguments";
+      echo "Description: Concatenates symbols from consecutive samples having the same ID";
+      echo "Usage: $FN < TAB";
+    } 1>&2;
+    return 1;
+  fi
+
+  gawk '
+    { if ( $1 != PREV && VAL != "" ) {
+        print(PREV" "VAL);
+        VAL = "";
+      }
+      SAMP = $1;
+      $1 = "";
+      VAL = SAMP != PREV ? $0 : (VAL" "$0);
+      PREV = SAMP;
+    }
+    END {
+      if ( VAL != "" )
+        print(PREV" "VAL);
+    }' \
+    | sed 's|   *| |g';
 }
 
 ##
@@ -782,6 +1078,7 @@ htrsh_prep_tasas () {
   local FN="htrsh_prep_tasas";
   local FORMAT="mlf";
   local SEPCHARS="no";
+  local TOKENIZER="";
   if [ $# -lt 2 ]; then
     { echo "$FN: Error: Not enough input arguments";
       echo "Description: Transforms a ground truth and a recognition file to the format used by tasas";
@@ -789,6 +1086,7 @@ htrsh_prep_tasas () {
       echo "Options:";
       echo " -f FORMAT    Input format, either 'mlf' or 'tab' (def.=$FORMAT)";
       echo " -c (yes|no)  Whether to separate characters for CER computation (def.=$SEPCHARS)";
+      echo " -t TOKENIZER A pipe command to tokenize (def.=$TOKENIZER)";
     } 1>&2;
     return 1;
   fi
@@ -802,6 +1100,8 @@ htrsh_prep_tasas () {
       FORMAT="$2";
     elif [ "$1" = "-c" ]; then
       SEPCHARS="$2";
+    elif [ "$1" = "-t" ]; then
+      TOKENIZER="$2";
     else
       echo "$FN: error: unexpected input argument: $1" 1>&2;
       return 1;
@@ -821,6 +1121,16 @@ htrsh_prep_tasas () {
     FORMAT="htrsh_mlf_to_tab";
   else
     FORMAT="cat";
+  fi
+
+  if [ "$TOKENIZER" = "" ]; then
+    format_data () { $FORMAT "$1"; }
+  else
+    format_data () {
+      paste -d " " \
+        <( $FORMAT "$1" | sed 's| .*||' ) \
+        <( $FORMAT "$1" | sed 's|^[^ ]* ||' | $TOKENIZER );
+    }
   fi
 
   ### Create tasas file ###
@@ -862,7 +1172,7 @@ htrsh_prep_tasas () {
         }
         printf("\n");
       }
-    }' <( $FORMAT "$GT" ) <( $FORMAT "$REC" );
+    }' <( format_data "$GT" ) <( format_data "$REC" );
 }
 
 ##
@@ -1144,10 +1454,10 @@ htrsh_pagexml_resize () {
       echo "Usage: $FN ( {newWidth}x{newHeight} | {scaleFact}% ) < XML_PAGE_FILE";
     } 1>&2;
     return 1;
-  elif [ $(echo "$1" | grep -P '^[0-9]+x[0-9]+$' | wc -l) = 1 ]; then
+  elif [ $(echo "$1" | grep '^[0-9][0-9]*x[0-9][0-9]*$' | wc -l) = 1 ]; then
     newWidth=$(echo "$1" | sed 's|x.*||');
     newHeight=$(echo "$1" | sed 's|.*x||');
-  elif [ $(echo "$1" | grep -P '^[0-9.]+%$' | wc -l) = 1 ]; then
+  elif [ $(echo "$1" | grep '^[0-9.][0-9.]%$' | wc -l) = 1 ]; then
     scaleFact=$(echo "$1" | sed 's|%$||');
   fi
 
@@ -1718,13 +2028,13 @@ htrsh_pagexml_sort_regions () {
 }
 
 ##
-## Function that relabels ids of TextRegions and TextLines in an XML Page file
+## Function that relabels ids of TextRegions, TextLines and Words in an XML Page file
 ##
 htrsh_pagexml_relabel () {
   local FN="htrsh_pagexml_relabel";
   if [ $# != 0 ]; then
     { echo "$FN: error: function does not expect arguments";
-      echo "Description: Relabels ids of TextRegions and TextLines in an XML Page file";
+      echo "Description: Relabels ids of TextRegions, TextLines and Words in an XML Page file";
       echo "Usage: $FN < XMLIN";
     } 1>&2;
     return 1;
@@ -1819,6 +2129,52 @@ htrsh_pagexml_relabel () {
   xmlstarlet tr <( echo "$XSLT1" ) \
     | xmlstarlet tr <( echo "$XSLT2" ) \
     | xmlstarlet tr <( echo "$XSLT3" );
+}
+
+##
+## Function that relabels IDs of TextLines in an XML Page file
+##
+htrsh_pagexml_relabel_textlines () {
+  local FN="htrsh_pagexml_relabel";
+  if [ $# != 0 ]; then
+    { echo "$FN: error: function does not expect arguments";
+      echo "Description: Relabels IDs of TextLines in an XML Page file";
+      echo "Usage: $FN < XMLIN";
+    } 1>&2;
+    return 1;
+  fi
+
+  local XSLT='<?xml version="1.0"?>
+<xsl:stylesheet
+  xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"
+  xmlns:_="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"
+  version="1.0">
+
+  <xsl:output method="xml" indent="yes" encoding="utf-8" omit-xml-declaration="no"/>
+
+  <xsl:template match="@* | node()">
+    <xsl:copy>
+      <xsl:apply-templates select="@* | node()"/>
+    </xsl:copy>
+  </xsl:template>
+
+  <xsl:template match="//_:TextRegion/_:TextLine">
+    <xsl:variable name="pid" select="../@id"/>
+    <xsl:copy>
+      <xsl:attribute name="id">
+        <xsl:value-of select="concat(../@id,&quot;_l&quot;)"/>
+        <!--<xsl:number count="//_:TextRegion/_:TextLine" format="01"/>-->
+        <xsl:number count="//_:TextRegion/_:TextLine"/>
+      </xsl:attribute>
+      <xsl:apply-templates select="@*[local-name() != '"'id'"'] | node()" />
+    </xsl:copy>
+  </xsl:template>
+
+</xsl:stylesheet>';
+
+  xmlstarlet tr <( echo "$XSLT" );
 }
 
 ##
@@ -3197,13 +3553,23 @@ htrsh_pageimg_extract_linefeats () {
     #xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n slope -v "$slope" );
     #[ "$htrsh_feat_deslant" = "yes" ] &&
     #xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n slant -v "$slant" );
-    xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n fpgram -v "$fpgram" );
+    #xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n fpgram -v "$fpgram" );
+    xmledit+=( -d "//*[@id='$id']/_:Property[@key='fpgram']" );
+    xmledit+=( -s "//*[@id='$id']" -t elem -n TMPNODE );
+    xmledit+=( -i //TMPNODE -t attr -n key -v fgram );
+    xmledit+=( -i //TMPNODE -t attr -n value -v "$fgram" );
+    xmledit+=( -r //TMPNODE -v Property );
 
     ### Compute detailed contours if requested ###
     if [ "$htrsh_feat_contour" = "yes" ]; then
       local pts=$(imgccomp -V1 -NJS -A 0.5 -D $htrsh_feat_dilradi -R 5,2,2,2 ${ff}_clean.png);
       [ "$pts" = "" ] && pts="$fpgram";
-      xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n fcontour -v "$pts" );
+      #xmledit+=( -i "//*[@id='$id']/_:Coords" -t attr -n fcontour -v "$pts" );
+      xmledit+=( -d "//*[@id='$id']/_:Property[@key='fcontour']" );
+      xmledit+=( -s "//*[@id='$id']" -t elem -n TMPNODE );
+      xmledit+=( -i //TMPNODE -t attr -n key -v fcontour );
+      xmledit+=( -i //TMPNODE -t attr -n value -v "$pts" );
+      xmledit+=( -r //TMPNODE -v Property );
     fi 2>&1;
 
     local FEATOP="";
@@ -3254,9 +3620,12 @@ htrsh_pageimg_extract_linefeats () {
   if [ "$htrsh_feat_contour" = "yes" ] && [ "$REPLC" = "yes" ]; then
     xmledit=( ed --inplace );
     local id;
-    for id in $(xmlstarlet sel -t -m '//*/_:Coords[@fcontour]' -v ../@id -n "$XMLOUT"); do
-      xmledit+=( -d "//*[@id='${id}']/_:Coords/@points" );
-      xmledit+=( -r "//*[@id='${id}']/_:Coords/@fcontour" -v points );
+    #for id in $(xmlstarlet sel -t -m '//*/_:Coords[@fcontour]' -v ../@id -n "$XMLOUT"); do
+    for id in $(xmlstarlet sel -t -m '//*/_:Property[@key="fcontour"]' -v ../@id -n "$XMLOUT"); do
+      xmledit+=( -d "//*[@id='${id}']/_:Coords/@points" "//*[@id='${id}']/_:Coords/@value" );
+      #xmledit+=( -r "//*[@id='${id}']/_:Coords/@fcontour" -v points );
+      xmledit+=( -m "//*[@id='${id}']/_:Property[@key='fcontour']/@value" "//*[@id='${id}']/_:Coords" );
+      xmledit+=( -r "//*[@id='${id}']/_:Coords/@value" "//*[@id='${id}']/_:Coords/@points" );
     done
     xmlstarlet "${xmledit[@]}" "$XMLOUT";
   fi
@@ -3333,6 +3702,34 @@ htrsh_gawk_func_word_to_chars='
     if( endspace == "yes" )
       hmms[++C] = SPACE;
     return C;
+  }';
+
+##
+## GAWK functions to convert chars to words
+##
+htrsh_gawk_func_chars_to_word='
+  function load_special_chars( SPECIAL,   n,c,line,sline ) {
+    delete SCHAR;
+    SCHAR[SPACE] = " ";
+    while( ( getline line<SPECIAL ) > 0 )
+      if( line != "" ) {
+        n = split(line,sline);
+        SCHAR[ n == 1 ? sline[1] : sline[2] ] = sline[1];
+      }
+    close( SPECIAL );
+  }
+
+  function chars_to_word( text ) {
+    N = split(text,stext);
+    txt = "";
+    for( n=1; n<=N; n++ ) {
+      s = stext[n];
+      if( s in SCHAR )
+        txt = (txt SCHAR[s]);
+      else
+        txt = (txt s);
+    }
+    return txt;
   }';
 
 ##
@@ -4298,7 +4695,7 @@ htrsh_mlf_diplom_prepalign () {
     | gawk -v SPACE="$htrsh_symb_space" '
       { if( ARGIND == 1 ) {
           full = substr($2,2,length($2)-2);
-          canon = match($1,/^".+"$/) ? 
+          canon = match($1,/^".+"$/) ?
             gensub( /\\"/, "\"", "g", substr($1,2,length($1)-2) ) : $1 ;
           $1 = $2 = $3 = "";
           if( $NF == SPACE )
@@ -4410,7 +4807,8 @@ htrsh_pagexml_insertalign_lines () {(
   local id;
   for id in $ids; do
     #fpgram+=( -o " " -v "//*[@id='$id']/_:Coords/@fpgram" -o " ;" );
-    fpgram+=( -m "//_:TextLine[@id='$id' and _:Coords/@fpgram]" -v @id -o $'\t' -v _:Coords/@fpgram -n -b );
+    #fpgram+=( -m "//_:TextLine[@id='$id' and _:Coords/@fpgram]" -v @id -o $'\t' -v _:Coords/@fpgram -n -b );
+    fpgram+=( -m "//_:TextLine[@id='$id' and _:Property[@key='fpgram']" -v @id -o $'\t' -v "_:Property[@key='fpgram']/@value" -n -b );
   done
   fpgram=$( "${fpgram[@]}" "$XML" );
 
@@ -4531,7 +4929,7 @@ htrsh_pagexml_insertalign_lines () {(
 
     if [ "$htrsh_align_contour" = "yes" ]; then
       local LIMG="$XMLDIR/$IMBASE.${id}_clean.png";
-      [ "$htrsh_extended_names" = "true" ] && 
+      [ "$htrsh_extended_names" = "true" ] &&
         LIMG="$XMLDIR/$IMBASE."$(xmlstarlet sel -t -v "//*[@id='$id']/../@id" "$XML")".${id}_clean.png";
       local LGEO=( $(identify -format "%w %h %X %Y %x %U" "$LIMG" | sed 's|+||g') );
     fi
@@ -4916,6 +5314,103 @@ htrsh_mlf_align_blind () {
           }
           printf( ".\n" );
         }';
+}
+
+##
+## Function that blindly creates Words from TextLines by assuming all characters have equal width
+##
+htrsh_pagexml_align_blind () {
+  local FN="htrsh_pagexml_align_blind";
+  if [ $# -lt 1 ]; then
+    { echo "$FN: Error: Not enough input arguments";
+      echo "Description: Blindly creates Words from TextLines by assuming all characters have equal width";
+      echo "Usage: $FN XMLIN [XMLOUT]";
+    } 1>&2;
+    return 1;
+  fi
+
+  ### Parse input arguments ###
+  local XML="$1";
+  local XMLOUT="-"; [ "$#" -gt 1 ] && XMLOUT="$2";
+  shift 2;
+
+  if [ "$XML" = "$XMLOUT" ]; then
+    echo "$FN: error: input and output files must be different" 1>&2;
+    return 1;
+  fi
+
+  ### Check page ###
+  local $htrsh_infovars;
+  htrsh_pageimg_info "$XML" noimg;
+  [ "$?" != 0 ] && return 1;
+
+  local IDS=$(xmlstarlet sel -t -m "$htrsh_xpath_regions/$htrsh_xpath_lines[$htrsh_xpath_textequiv]" -v @id -n "$XML");
+
+  local xmledit=( ed -d //@dummyattr );
+
+  local id n TEXT LGTH COORD;
+  for id in $IDS; do
+    TEXT=( $(xmlstarlet sel -T -B -E utf-8 -t -v "//*[@id='$id']/_:TextEquiv/_:Unicode" "$XML") );
+    LGTH=( $( echo "${TEXT[@]}" \
+      | awk '
+          { N=M=0;
+            for(n=1;n<=NF;n++)
+              N += length($n) + ( n==1 ? 0 : 1 );
+            for(n=1;n<=NF;n++) {
+              M += ( length($n) + ( (n==1||n==NF) ? 0.5 : 1 ) )/N;
+              print M;
+            }
+          }') );
+    if [ "${#TEXT[@]}" != "${#LGTH[@]}" ]; then
+      echo "error: unexpected state: @id :: $XML" 1>&2;
+      return 1;
+    fi
+    COORDS=( $(
+        { echo "${LGTH[@]}";
+          xmlstarlet sel -t -v "//*[@id='$id']/_:Coords/@points" -n "$XML";
+        } | awk -F'[, ]' '
+          { if( NR == 1 ) {
+              N = NF;
+              LGTH[1] = 0;
+              for(n=1;n<=NF;n++)
+                LGTH[n+1] = $n;
+            }
+            else {
+              Xtl=$1; Ytl=$2;
+              Xtr=$3; Ytr=$4;
+              Xbr=$5; Ybr=$6;
+              Xbl=$7; Ybl=$8;
+              dX = Xtr - Xtl;
+              dY = Ytr - Ytl;
+              for(n=1;n<=N;n++)
+                printf( "%s,%s_%s,%s_%s,%s_%s,%s\n",
+                    Xtl+LGTH[n]*dX,   Ytl+LGTH[n]*dY,
+                    Xtl+LGTH[n+1]*dX, Ytl+LGTH[n+1]*dY,
+                    Xbl+LGTH[n+1]*dX, Ybl+LGTH[n+1]*dY,
+                    Xbl+LGTH[n]*dX,   Ybl+LGTH[n]*dY );
+            }
+          }'
+      ) );
+
+    for n in $(seq 1 ${#TEXT[@]}); do
+      wid="${id}_w$n";
+      xmledit+=( -s "//*[@id='$id']" -t elem -n TMPNODE );
+      xmledit+=( -i //TMPNODE -t attr -n id -v "$wid" );
+      xmledit+=( -s //TMPNODE -t elem -n Coords );
+      xmledit+=( -i //TMPNODE/Coords -t attr -n points -v "${COORDS[$((n-1))]//_/ }" );
+      xmledit+=( -s //TMPNODE -t elem -n TextEquiv );
+      xmledit+=( -s //TMPNODE/TextEquiv -t elem -n Unicode -v "${TEXT[$((n-1))]}" );
+      xmledit+=( -r //TMPNODE -v Word );
+    done
+    xmledit+=( -m "//*[@id='$id']/_:TextEquiv" "//*[@id='$id']" );
+    xmledit+=( -m "//*[@id='$id']/_:TextStyle" "//*[@id='$id']" );
+  done
+
+  if [ "$XMLOUT" = "-" ]; then
+    xmlstarlet "${xmledit[@]}" "$XML" | xmlstarlet fo -e utf-8 -;
+  else
+    xmlstarlet "${xmledit[@]}" "$XML" | xmlstarlet fo -e utf-8 - > "$XMLOUT";
+  fi
 }
 
 ##
@@ -5444,7 +5939,8 @@ htrsh_pageimg_forcealign () {
 
   local I=$(xmlstarlet sel -t -v //@imageFilename "$XML");
   local xmledit=( -u //@imageFilename -v "$I" );
-  [ "$KEEPAUX" != "yes" ] && xmledit+=( -d //@fpgram -d //@fcontour );
+  #[ "$KEEPAUX" != "yes" ] && xmledit+=( -d //@fpgram -d //@fcontour );
+  [ "$KEEPAUX" != "yes" ] && xmledit+=( -d "//_:Property[@key='fpgram']" -d "//_:Property[@key='fcontour']" );
 
   xmlstarlet ed "${xmledit[@]}" "$XMLOUT" \
     | htrsh_pagexml_round \
